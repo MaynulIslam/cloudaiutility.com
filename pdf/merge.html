@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Merge PDFs — Cloud AI Utility</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="css/pdf.css">
+</head>
+<body>
+  <header>
+    <a href="../index.html" class="cherry-bomb-one-regular">Cloud AI Utility.com</a>
+    <nav class="header-nav">
+      <a href="../index.html" class="nav-link cherry-bomb-one-regular">Home</a>
+      <a href="../pdf-tools.html" class="nav-link cherry-bomb-one-regular">PDF Tools</a>
+    </nav>
+  </header>
+  <main class="pdf-tool-page">
+    <h1>Merge PDFs</h1>
+
+    <section class="merge-panel">
+      <div id="drop-area" class="drop-area" tabindex="0" aria-label="Drop PDF files here or click to select">
+        <p>Drop PDF files here, or <button id="browse-btn" class="link-button">browse</button></p>
+        <input id="file-input" type="file" accept="application/pdf" multiple hidden>
+      </div>
+
+      <div id="file-list-wrapper">
+        <h2>Files</h2>
+        <ul id="file-list" class="file-list" role="list"></ul>
+      </div>
+
+      <div class="actions">
+        <button id="merge-btn" class="primary" disabled>Merge PDFs</button>
+        <span id="status" role="status" aria-live="polite"></span>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Utility App</p>
+  </footer>
+
+  <script src="../js/pdf-merge.js" type="module"></script>
+</body>
+</html>
