@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>File Conversion - Utility App</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <img src="assets/logo.png" alt="Utility App Logo" class="logo">
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="#services">Services</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+  <main>
+    <h1>File Conversion</h1>
+    <section class="tool-section">
+      <form id="file-form">
+        <label>Select file conversion type:</label>
+        <select name="operation">
+          <option>Video Converter</option>
+          <option>Audio Converter</option>
+          <option>Document Converter</option>
+        </select>
+        <br><br>
+        <input type="file" name="files" multiple>
+        <br><br>
+        <button type="submit">Convert</button>
+      </form>
+      <div id="file-result" class="result-area">
+        <p>Result will be shown here.</p>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <p>&copy; 2025 Utility App. All rights reserved.</p>
+    <a href="#privacy">Privacy Policy</a>
+    <a href="#terms">Terms of Service</a>
+  </footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

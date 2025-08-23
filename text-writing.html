@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Text & Writing Utilities - Utility App</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <img src="assets/logo.png" alt="Utility App Logo" class="logo">
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="#services">Services</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Text & Writing Utilities</h1>
+    <section class="tool-section">
+      <form id="text-form">
+        <label>Select utility:</label>
+        <select name="operation">
+          <option>Word Counter</option>
+          <option>Grammar Check</option>
+          <option>Plagiarism Check</option>
+        </select>
+        <br><br>
+        <textarea name="textInput" rows="6" cols="40" placeholder="Enter your text here..."></textarea>
+        <br><br>
+        <button type="submit">Check</button>
+      </form>
+      <div id="text-result" class="result-area">
+        <p>Result will be shown here.</p>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <p>&copy; 2025 Utility App. All rights reserved.</p>
+    <a href="#privacy">Privacy Policy</a>
+    <a href="#terms">Terms of Service</a>
+  </footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

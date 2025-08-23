@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR Code Generator - Utility App</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <img src="assets/logo.png" alt="Utility App Logo" class="logo">
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="#services">Services</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+  <main>
+    <h1>QR Code Generator</h1>
+    <section class="tool-section">
+      <form id="qr-form">
+        <label>Enter data for QR code:</label>
+        <input type="text" name="qrData" placeholder="Type or paste text/link here" style="width: 80%;">
+        <br><br>
+        <label>Size:</label>
+        <select name="qrSize">
+          <option value="128">128x128</option>
+          <option value="256">256x256</option>
+          <option value="512">512x512</option>
+        </select>
+        <br><br>
+        <button type="submit">Generate QR Code</button>
+      </form>
+      <div id="qr-result" class="result-area">
+        <p>QR code will be shown here.</p>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <p>&copy; 2025 Utility App. All rights reserved.</p>
+    <a href="#privacy">Privacy Policy</a>
+    <a href="#terms">Terms of Service</a>
+  </footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

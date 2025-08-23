@@ -1,0 +1,18 @@
+/Ulitity_App/
+  /assets/
+    logo.png
+    pdf-icon.png
+    image-icon.png
+    file-icon.png
+    text-icon.png
+    qr-icon.png
+  /css/
+    style.css
+  /js/
+    main.js
+  index.html
+  pdf-tools.html
+  image-tools.html
+  file-conversion.html
+  text-writing.html
+  qr-code.html

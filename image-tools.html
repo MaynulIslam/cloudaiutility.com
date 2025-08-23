@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Image Tools - Utility App</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <img src="assets/logo.png" alt="Utility App Logo" class="logo">
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="#services">Services</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Image Tools</h1>
+    <section class="tool-section">
+      <form id="image-form">
+        <label>Select image operation:</label>
+        <select name="operation">
+          <option>Resize Image</option>
+          <option>Compress Image</option>
+          <option>Convert Format</option>
+        </select>
+        <br><br>
+        <input type="file" name="imageFiles" multiple accept="image/*">
+        <br><br>
+        <button type="submit">Process</button>
+      </form>
+      <div id="image-result" class="result-area">
+        <p>Result will be shown here.</p>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <p>&copy; 2025 Utility App. All rights reserved.</p>
+    <a href="#privacy">Privacy Policy</a>
+    <a href="#terms">Terms of Service</a>
+  </footer>
+  <script src="js/main.js"></script>
+</body>
+</html>
