@@ -8,32 +8,93 @@
 </head>
 <body>
   <header>
-    <img src="assets/logo.png" alt="Utility App Logo" class="logo">
-    <nav>
-      <a href="index.html">Home</a>
-      <a href="#services">Services</a>
-      <a href="#contact">Contact</a>
+    <a href="index.html" class="cherry-bomb-one-regular">Cloud AI Utility.com</a>
+    <nav class="header-nav">
+      <a href="#pro" class="nav-link cherry-bomb-one-regular">Pro</a>
+      <a href="#signup" class="nav-link cherry-bomb-one-regular">Sign up</a>
+      <a href="#signin" class="nav-link cherry-bomb-one-regular">Sign in</a>
     </nav>
   </header>
   <main>
     <h1>PDF Tools</h1>
-    <section class="tool-section">
-      <form id="pdf-form">
-        <label>Select PDF operation:</label>
-        <select name="operation">
-          <option>Merge PDFs</option>
-          <option>Split PDF</option>
-          <option>Compress PDF</option>
-          <option>Convert PDF</option>
-        </select>
-        <br><br>
-        <input type="file" name="pdfFiles" multiple>
-        <br><br>
-        <button type="submit">Process</button>
-      </form>
-      <div id="pdf-result" class="result-area">
-        <!-- Output will appear here -->
-        <p>Result will be shown here.</p>
+    <section class="card-grid">
+      <!-- Merge -->
+      <div class="service-card">
+        <img src="assets/pdf-merge.svg" alt="Merge PDFs">
+        <h2>Merge PDFs</h2>
+        <p>Combine multiple PDF files into one document.</p>
+      </div>
+      <!-- Split -->
+      <div class="service-card">
+        <img src="assets/pdf-split.svg" alt="Split PDF">
+        <h2>Split PDF</h2>
+        <p>Divide a PDF into separate pages or files.</p>
+      </div>
+      <!-- Compress -->
+      <div class="service-card">
+        <img src="assets/pdf-compress.svg" alt="Compress PDF">
+        <h2>Compress PDF</h2>
+        <p>Reduce PDF file size for easy sharing.</p>
+      </div>
+      <!-- Convert PDFs -->
+      <div class="service-card">
+        <img src="assets/pdf-convert.svg" alt="Convert PDF">
+        <h2>Convert PDFs</h2>
+        <p>Convert PDFs to Word, Excel, images, and more.</p>
+      </div>
+      <!-- Edit & Annotate -->
+      <div class="service-card">
+        <img src="assets/pdf-edit.svg" alt="Edit & Annotate PDF">
+        <h2>Edit & Annotate PDFs</h2>
+        <p>Edit text, add comments, and highlight content.</p>
+      </div>
+      <!-- Crop, Rotate, Delete Pages -->
+      <div class="service-card">
+        <img src="assets/pdf-pages.svg" alt="Crop, Rotate, Delete Pages">
+        <h2>Crop, Rotate, Delete Pages</h2>
+        <p>Modify, crop, rotate, or remove PDF pages.</p>
+      </div>
+      <!-- eSign / Request Signatures -->
+      <div class="service-card">
+        <img src="assets/pdf-sign.svg" alt="eSign PDF">
+        <h2>eSign / Request Signatures</h2>
+        <p>Sign PDFs or request signatures from others.</p>
+      </div>
+      <!-- OCR -->
+      <div class="service-card">
+        <img src="assets/pdf-ocr.svg" alt="OCR PDF">
+        <h2>OCR (Scanned PDF Text)</h2>
+        <p>Extract text from scanned PDF documents.</p>
+      </div>
+      <!-- Redact / Flatten / Watermark -->
+      <div class="service-card">
+        <img src="assets/pdf-redact.svg" alt="Redact PDF">
+        <h2>Redact / Flatten / Watermark</h2>
+        <p>Remove sensitive info, flatten, or watermark PDFs.</p>
+      </div>
+      <!-- Organize / Number Pages -->
+      <div class="service-card">
+        <img src="assets/pdf-organize.svg" alt="Organize Pages">
+        <h2>Organize / Number Pages</h2>
+        <p>Reorder, group, or number PDF pages.</p>
+      </div>
+      <!-- AI Features -->
+      <div class="service-card">
+        <img src="assets/pdf-ai.svg" alt="AI PDF Features">
+        <h2>AI Features</h2>
+        <p>Summarize, chat, translate, and Q&A with PDFs.</p>
+      </div>
+      <!-- PDF to PDF/A, Repair, Compare -->
+      <div class="service-card">
+        <img src="assets/pdf-repair.svg" alt="PDF/A, Repair, Compare">
+        <h2>PDF to PDF/A, Repair, Compare</h2>
+        <p>Convert to PDF/A, repair, or compare PDFs.</p>
+      </div>
+      <!-- Form Filling & Collaboration -->
+      <div class="service-card">
+        <img src="assets/pdf-form.svg" alt="Form Filling">
+        <h2>Form Filling & Collaboration</h2>
+        <p>Fill forms and collaborate on PDF documents.</p>
       </div>
     </section>
   </main>

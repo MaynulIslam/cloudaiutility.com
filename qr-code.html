@@ -8,31 +8,44 @@
 </head>
 <body>
   <header>
-    <img src="assets/logo.png" alt="Utility App Logo" class="logo">
+    <a href="index.html" class="cherry-bomb-one-regular">Cloud AI Utility.com</a>
     <nav>
-      <a href="index.html">Home</a>
-      <a href="#services">Services</a>
-      <a href="#contact">Contact</a>
+      <a href="#pro" class="nav-link cherry-bomb-one-regular">Pro</a>
+      <a href="#signup" class="nav-link cherry-bomb-one-regular">Sign up</a>
+      <a href="#signin" class="nav-link cherry-bomb-one-regular">Sign in</a>
     </nav>
   </header>
   <main>
     <h1>QR Code Generator</h1>
-    <section class="tool-section">
-      <form id="qr-form">
-        <label>Enter data for QR code:</label>
-        <input type="text" name="qrData" placeholder="Type or paste text/link here" style="width: 80%;">
-        <br><br>
-        <label>Size:</label>
-        <select name="qrSize">
-          <option value="128">128x128</option>
-          <option value="256">256x256</option>
-          <option value="512">512x512</option>
-        </select>
-        <br><br>
-        <button type="submit">Generate QR Code</button>
-      </form>
-      <div id="qr-result" class="result-area">
-        <p>QR code will be shown here.</p>
+    <section>
+      <h2>🔹 Basic QR Codes</h2>
+      <div class="card-grid">
+        <div class="service-card"><span>🌐</span><h3>Website URL QR</h3><p>Generate a QR code for any website link.</p></div>
+        <div class="service-card"><span>🔤</span><h3>Text QR</h3><p>Encode plain text into a QR code.</p></div>
+        <div class="service-card"><span>✉️</span><h3>Email QR</h3><p>Pre-fill an email with recipient, subject, and message.</p></div>
+        <div class="service-card"><span>📞</span><h3>Phone QR</h3><p>Generate QR to call a specific number.</p></div>
+        <div class="service-card"><span>💬</span><h3>SMS QR</h3><p>Send a predefined text message via QR scan.</p></div>
+      </div>
+      <h2>🔹 Payment & Business</h2>
+      <div class="card-grid">
+        <div class="service-card"><span>💸</span><h3>PayPal / Venmo QR</h3><p>Link QR to payment options.</p></div>
+        <div class="service-card"><span>💼</span><h3>Business Card QR</h3><p>Share contact details (vCard/MeCard).</p></div>
+        <div class="service-card"><span>📶</span><h3>Wi-Fi QR</h3><p>Connect devices to Wi-Fi without typing password.</p></div>
+        <div class="service-card"><span>📅</span><h3>Event QR</h3><p>Encode event info for easy calendar import.</p></div>
+      </div>
+      <h2>🔹 Customization & Design</h2>
+      <div class="card-grid">
+        <div class="service-card"><span>🎨</span><h3>Change Colors</h3><p>Customize foreground and background colors.</p></div>
+        <div class="service-card"><span>🖼️</span><h3>Add Logo/Image</h3><p>Place a logo or small image inside QR.</p></div>
+        <div class="service-card"><span>🔲</span><h3>Shape & Style</h3><p>Rounded corners, dots, or eye shapes.</p></div>
+        <div class="service-card"><span>🏷️</span><h3>Frame & Label</h3><p>Add captions or call-to-action text.</p></div>
+      </div>
+      <h2>🔹 Advanced Options</h2>
+      <div class="card-grid">
+        <div class="service-card"><span>📥</span><h3>Download Formats</h3><p>PNG, SVG, PDF, EPS.</p></div>
+        <div class="service-card"><span>🖨️</span><h3>High-Resolution QR</h3><p>Suitable for printing.</p></div>
+        <div class="service-card"><span>🔄</span><h3>Dynamic QR Codes</h3><p>Change destination without changing QR.</p></div>
+        <div class="service-card"><span>📊</span><h3>Scan Analytics</h3><p>Track number of scans, location, and device type.</p></div>
       </div>
     </section>
   </main>

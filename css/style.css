@@ -1,110 +1,175 @@
-body {
-  margin: 0;
-  font-family: 'Segoe UI', Arial, sans-serif;
-  background: #f7f9fb;
-  color: #222;
-}
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 2rem;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-.logo {
-  height: 40px;
-}
-nav a {
-  margin: 0 1rem;
-  text-decoration: none;
-  color: #0078d7;
-  font-weight: 500;
-}
-main {
-  max-width: 1100px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-}
-h1 {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 2rem;
-}
-.service-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-  text-align: center;
-  padding: 2rem 1rem;
-  text-decoration: none;
-  color: inherit;
-  transition: transform 0.25s cubic-bezier(.25,.8,.25,1), box-shadow 0.2s;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  z-index: 11;
-}
-.service-card:hover {
-  box-shadow: 0 8px 32px rgba(0,123,215,0.18);
-  transform: scale(1.08);
-  border: 2px solid #0078d7;
-}
-.service-card img {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 1rem;
-}
-footer {
-  background: #fff;
-  text-align: center;
-  padding: 1rem 0;
-  margin-top: 3rem;
-  font-size: 0.95rem;
-  color: #666;
-  border-top: 1px solid #eee;
-}
-footer a {
-  margin: 0 0.5rem;
-  color: #0078d7;
-  text-decoration: none;
+@import url('https://fonts.googleapis.com/css2?family=Cherry+Bomb+One&display=swap');
+/*
+  Clean, backward-compatible stylesheet.
+  - Uses CSS variables for theme
+  - Supports semantic tags (header, nav) and class-based (.header, .header-nav)
+  - Keeps existing utility classes (.cherry-bomb-one-regular, .cherry-bomb-one-title)
+  - Minimizes global selectors to avoid accidental overrides
+*/
+
+:root{
+  --bg: #f7f9fb;
+  --surface: #ffffff;
+  --text: #222222;
+  --muted: #666666;
+  --accent: #266969; /* navigation color */
+  --accent-strong: #0078d7; /* highlight / previous accent */
+  --title-color: #1B4B4B;
+  --radius: 12px;
+  --container-width: 1100px;
+  --gap: 2rem;
 }
 
-/* Overlay for blur effect */
-.blur-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(255,255,255,0.4);
-  backdrop-filter: blur(4px);
-  z-index: 10;
-  pointer-events: none;
+/* Base / reset */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:'Segoe UI', Arial, system-ui, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
 }
 
-/* Highlight hovered card above blur overlay */
-.card-grid.blur-active .service-card:not(.active) {
-  filter: blur(2px) grayscale(40%);
-  opacity: 0.6;
-  pointer-events: none;
-}
-.card-grid.blur-active .service-card.active {
-  z-index: 12;
-  box-shadow: 0 12px 40px rgba(0,123,215,0.22);
-  transform: scale(1.12);
-  border: 2.5px solid #0078d7;
+/* Keep link behavior neutral by default */
+a{color:inherit;text-decoration:none}
+
+/* ---------- Header / Nav (compat supports both) ---------- */
+/* Apply to both semantic and class-based headers */
+header, .header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:1rem 2rem;
+  background:var(--surface);
+  box-shadow:0 2px 8px rgba(0,0,0,0.04);
 }
 
-@media (max-width: 600px) {
-  header, main {
-    padding: 1rem;
-  }
-  .card-grid {
-    gap: 1rem;
-  }
+/* Support both nav and .header-nav */
+nav, .header-nav{
+  display:flex;
+  gap:1rem;
+  align-items:center;
 }
+
+/* Logo / site title (link) */
+.site-logo, .cherry-bomb-one-regular{
+  font-family:'Cherry Bomb One', system-ui, sans-serif;
+  color:var(--accent);
+  font-weight:400;
+  font-size:1.5rem;
+  letter-spacing:.5px;
+  text-decoration:none; /* explicit: no underline */
+  display:inline-block;
+}
+/* ensure visited / focus states don't change appearance */
+.site-logo:visited, .site-logo:focus, .cherry-bomb-one-regular:visited, .cherry-bomb-one-regular:focus{
+  color:var(--accent);
+  text-decoration:none;
+}
+
+/* nav links use logo font and color */
+.nav-link, nav a, .header-nav .nav-link{
+  font-family:'Cherry Bomb One', system-ui, sans-serif;
+  color:var(--accent);
+  font-size:1.5rem; /* increased per request */
+  text-decoration:none;
+  cursor:default; /* user requested no hover change */
+}
+
+/* nav hover zoom (20%) */
+.nav-link, nav a, .header-nav .nav-link{
+  display:inline-block; /* allow transform without affecting flow */
+  transform-origin:center;
+  transition:transform 180ms cubic-bezier(.25,.8,.25,1);
+}
+.nav-link:hover, nav a:hover, .header-nav .nav-link:hover{
+  transform:scale(1.2);
+  text-decoration:none; /* ensure no underline */
+  cursor:default; /* keep cursor unchanged per request */
+}
+
+/* logo hover zoom to match nav */
+.site-logo, .cherry-bomb-one-regular{
+  display:inline-block; /* ensure transform doesn't affect flow */
+  transform-origin:center;
+  transition:transform 180ms cubic-bezier(.25,.8,.25,1);
+}
+.site-logo:hover, .cherry-bomb-one-regular:hover{
+  transform:scale(1.2);
+}
+.site-logo:hover{cursor:pointer}
+
+/* ---------- Container / Page title ---------- */
+.container, main{
+  max-width:var(--container-width);
+  margin:2rem auto;
+  padding:0 1rem;
+}
+.page-title{ text-align:center; margin-bottom:var(--gap);} 
+.cherry-bomb-one-title{
+  font-family:'Cherry Bomb One', system-ui, sans-serif;
+  font-size:2.5rem;
+  color:var(--title-color);
+  letter-spacing:2px;
+  margin:1;
+}
+
+/* ---------- Card Grid / Cards ---------- */
+.card-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:var(--gap);
+}
+.service-card{
+  background:var(--surface);
+  border-radius:var(--radius);
+  box-shadow:0 2px 12px rgba(0,0,0,0.07);
+  text-align:center;
+  padding:2rem 1rem;
+  color:inherit;
+  transition:transform 0.25s cubic-bezier(.25,.8,.25,1), box-shadow 0.2s;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  position:relative;
+}
+.service-card img{width:48px;height:48px;margin-bottom:1rem;transition:transform .35s ease}
+.service-card:hover{transform:scale(1.06);box-shadow:0 8px 32px rgba(0,123,215,0.18);border:2px solid rgba(0,120,200,0.08)}
+.service-card:hover img{transform:scale(1.12) rotate(-6deg)}
+
+/* Result area placeholder */
+.result-area{margin-top:1rem;background:#fafafa;padding:1rem;border-radius:8px;border:1px solid #eee}
+
+/* ---------- Footer ---------- */
+footer, .site-footer{
+  background:var(--surface);
+  text-align:center;
+  padding:1rem 0;
+  margin-top:3rem;
+  font-size:0.95rem;
+  color:var(--muted);
+  border-top:1px solid #eee;
+}
+footer a{color:var(--accent);text-decoration:none}
+
+/* ---------- Blur overlay and focus behavior ---------- */
+.blur-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.4);backdrop-filter:blur(4px);z-index:10;pointer-events:none}
+.card-grid.blur-active .service-card:not(.active){filter:blur(2px) grayscale(40%);opacity:0.6;pointer-events:none}
+.card-grid.blur-active .service-card.active{z-index:12;box-shadow:0 12px 40px rgba(0,123,215,0.22);transform:scale(1.12);border:2.5px solid rgba(2,119,200,0.12)}
+
+/* ---------- Utility helpers ---------- */
+.text-muted{color:var(--muted)}
+.small{font-size:.9rem}
+
+/* ---------- Responsive rules ---------- */
+@media (max-width:900px){
+  .cherry-bomb-one-title{font-size:2rem}
+}
+@media (max-width:600px){
+  header, .header, .container, main{padding:1rem}
+  .card-grid{gap:1rem}
+}
+
+/* End of stylesheet - this file intentionally supports both previous and restructured markup */
