@@ -50,9 +50,9 @@ class PDFProcessor {
       dropArea: document.getElementById('drop-area'),
       fileInput: document.getElementById('file-input'),
       browseBtn: document.getElementById('browse-btn'),
+      fileTags: document.getElementById('file-tags'),
       
       // File management
-      fileList: document.getElementById('file-list'),
       fileStats: document.getElementById('file-stats'),
       
       // Processing options
@@ -75,7 +75,7 @@ class PDFProcessor {
     };
 
     // Validate critical elements
-    const criticalElements = ['dropArea', 'fileInput', 'browseBtn', 'fileList'];
+    const criticalElements = ['dropArea', 'fileInput', 'browseBtn', 'fileTags'];
     const missingElements = criticalElements.filter(key => !this.elements[key]);
     
     if (missingElements.length > 0) {
@@ -131,7 +131,7 @@ class PDFProcessor {
 
     // Page range validation
     if (this.elements.pageRanges) {
-      this.elements.pageRanges.addEventListener('input', () => this.validatePageRanges());
+      this.elements.pageRanges.addEventListener('input', () => this.validateGlobalPageRanges());
     }
 
     console.log('✅ Event listeners bound successfully');
@@ -211,8 +211,7 @@ class PDFProcessor {
         title: pdfInfo.title,
         pdfDoc: pdfInfo.pdfDoc,
         isEncrypted: pdfInfo.isEncrypted,
-        addedAt: new Date(),
-        pageRanges: '' // User-defined page ranges
+        addedAt: new Date()
       };
       
       // Add to collection
@@ -360,103 +359,59 @@ class PDFProcessor {
 
   // UI Update Methods
   updateUI() {
-    this.updateFileList();
+    this.updateFileTags();
     this.updateStats();
     this.updateActionButtons();
   }
 
-  updateFileList() {
-    const container = this.elements.fileList;
+  updateFileTags() {
+    const container = this.elements.fileTags;
     if (!container) return;
     
     container.innerHTML = '';
     
     if (this.files.size === 0) {
-      container.innerHTML = '<div class="no-files">No files added yet</div>';
       return;
     }
     
     Array.from(this.files.values()).forEach((fileRecord, index) => {
-      const fileItem = this.createFileItem(fileRecord, index);
-      container.appendChild(fileItem);
+      const fileTag = this.createFileTag(fileRecord, index + 1);
+      container.appendChild(fileTag);
     });
   }
 
-  createFileItem(fileRecord, index) {
-    const item = document.createElement('div');
-    item.className = 'file-item';
-    item.draggable = true;
-    item.dataset.fileId = fileRecord.id;
+  createFileTag(fileRecord, number) {
+    const tag = document.createElement('div');
+    tag.className = 'file-tag';
+    tag.dataset.fileId = fileRecord.id;
     
-    const sizeFormatted = this.formatFileSize(fileRecord.size);
-    const timeAdded = fileRecord.addedAt.toLocaleTimeString();
+    // Truncate long filenames
+    const displayName = fileRecord.name.length > 20 
+      ? fileRecord.name.substring(0, 17) + '...' 
+      : fileRecord.name;
     
-    item.innerHTML = `
-      <div class="file-drag-handle">⋮⋮</div>
-      <div class="file-icon">📄</div>
-      <div class="file-info">
-        <div class="file-name" title="${fileRecord.name}">${fileRecord.name}</div>
-        <div class="file-details">${fileRecord.pageCount} pages • ${sizeFormatted} • Added ${timeAdded}</div>
-        <div class="file-ranges">
-          <input type="text" 
-                 placeholder="Page ranges (e.g., 1-5,8,10-12)" 
-                 value="${fileRecord.pageRanges}"
-                 class="page-range-input"
-                 data-file-id="${fileRecord.id}">
-        </div>
-      </div>
-      <div class="file-actions">
-        <button class="btn-icon" onclick="pdfProcessor.removeFile('${fileRecord.id}')" title="Remove file">
-          ✕
-        </button>
-      </div>
+    tag.innerHTML = `
+      <span class="file-tag-number">${number}</span>
+      <span class="file-tag-name" title="${fileRecord.name}">${displayName}</span>
+      <button class="file-tag-remove" onclick="pdfProcessor.removeFile('${fileRecord.id}')" title="Remove ${fileRecord.name}">
+        ×
+      </button>
     `;
     
-    // Bind page range input
-    const rangeInput = item.querySelector('.page-range-input');
-    rangeInput.addEventListener('input', (e) => {
-      fileRecord.pageRanges = e.target.value;
-      this.validatePageRange(e.target, fileRecord.pageCount);
-    });
-    
-    // Bind drag events for reordering
-    this.bindFileItemDragEvents(item);
-    
-    return item;
+    return tag;
   }
 
-  bindFileItemDragEvents(item) {
-    item.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData('text/plain', item.dataset.fileId);
-      item.classList.add('dragging');
-    });
+  validateGlobalPageRanges() {
+    const input = this.elements.pageRanges;
+    if (!input) return true;
     
-    item.addEventListener('dragend', () => {
-      item.classList.remove('dragging');
-    });
-    
-    item.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      const draggingItem = document.querySelector('.file-item.dragging');
-      if (draggingItem && draggingItem !== item) {
-        const rect = item.getBoundingClientRect();
-        const midpoint = rect.top + rect.height / 2;
-        
-        if (e.clientY < midpoint) {
-          item.parentNode.insertBefore(draggingItem, item);
-        } else {
-          item.parentNode.insertBefore(draggingItem, item.nextSibling);
-        }
-      }
-    });
-  }
-
-  validatePageRange(input, maxPages) {
     const value = input.value.trim();
     if (!value) return true;
     
     try {
-      const ranges = this.parsePageRanges(value, maxPages);
+      // Get total pages from all files
+      const totalPages = Array.from(this.files.values()).reduce((sum, f) => sum + f.pageCount, 0);
+      const ranges = this.parsePageRanges(value, totalPages);
       input.classList.remove('invalid');
       input.title = '';
       return true;
@@ -603,14 +558,18 @@ class PDFProcessor {
   }
 
   getFilesForProcessing() {
+    // Get global page ranges from the input
+    const globalPageRanges = this.elements.pageRanges ? this.elements.pageRanges.value.trim() : '';
+    
     return Array.from(this.files.values()).map(fileRecord => {
       let pageRanges = null;
       
-      if (fileRecord.pageRanges.trim()) {
+      // If global page ranges are specified, use them for all files
+      if (globalPageRanges) {
         try {
-          pageRanges = this.parsePageRanges(fileRecord.pageRanges, fileRecord.pageCount);
+          pageRanges = this.parsePageRanges(globalPageRanges, fileRecord.pageCount);
         } catch (error) {
-          console.warn(`Invalid page range for ${fileRecord.name}: ${error.message}`);
+          console.warn(`Invalid global page range for ${fileRecord.name}: ${error.message}`);
           // Use all pages if range is invalid
           pageRanges = null;
         }
