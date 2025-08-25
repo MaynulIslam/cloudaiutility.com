@@ -60,7 +60,7 @@
                 <path d="M12 18v-6"></path>
                 <path d="m9 15 3 3 3-3"></path>
               </svg>
-              Merge Files
+              Edit PDFs
             </button>
           </div>
         </section>
@@ -112,7 +112,10 @@
     <div id="page-preview-modal" class="modal" style="display: none;">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>Arrange Pages for Merge</h2>
+          <div class="modal-title-section">
+            <h2>Arrange Pages for Merge</h2>
+            <div id="file-labels" class="file-labels"></div>
+          </div>
           <button id="close-modal" class="close-btn">&times;</button>
         </div>
         <div class="modal-body">
@@ -148,6 +151,20 @@
     <p>&copy; 2025 Utility App</p>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script>
+    // Configure PDF.js worker when it's loaded
+    function configurePDFJS() {
+      if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        console.log('✅ PDF.js configured successfully');
+      } else {
+        console.log('⏳ Waiting for PDF.js to load...');
+        setTimeout(configurePDFJS, 100);
+      }
+    }
+    configurePDFJS();
+  </script>
   <script src="../js/pdf-processor-new.js" type="module"></script>
 </body>
 </html>
