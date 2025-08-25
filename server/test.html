@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Compression Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 10px 0; cursor: pointer; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d2e; }
+    </style>
+</head>
+<body>
+    <h1>PDF Processing Server Test</h1>
+    
+    <div class="test-section">
+        <h2>Server Health Check</h2>
+        <button onclick="testHealth()">Check Server Status</button>
+        <div id="health-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>PDF Compression Test</h2>
+        <input type="file" id="pdf-file" accept=".pdf">
+        <br>
+        <label>
+            Compression Level:
+            <select id="compression-level">
+                <option value="standard">Standard</option>
+                <option value="strong">Strong</option>
+            </select>
+        </label>
+        <br>
+        <button onclick="testCompression()">Compress PDF</button>
+        <div id="compression-result" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001/api';
+
+        async function testHealth() {
+            const resultDiv = document.getElementById('health-result');
+            resultDiv.textContent = 'Checking server status...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    <strong>Server Status:</strong> ${data.status}<br>
+                    <strong>Timestamp:</strong> ${data.timestamp}<br>
+                    <strong>Compression Available:</strong> ${data.features.compression}<br>
+                    <strong>Ghostscript Available:</strong> ${data.features.ghostscript}
+                `;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function testCompression() {
+            const fileInput = document.getElementById('pdf-file');
+            const levelSelect = document.getElementById('compression-level');
+            const resultDiv = document.getElementById('compression-result');
+            
+            if (!fileInput.files[0]) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Please select a PDF file';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const level = levelSelect.value;
+            
+            resultDiv.textContent = 'Compressing PDF...';
+            resultDiv.className = 'result';
+            
+            try {
+                const formData = new FormData();
+                formData.append('pdf', file);
+                formData.append('level', level);
+                
+                const response = await fetch(`${API_BASE}/compress-pdf`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+                
+                const blob = await response.blob();
+                const originalSize = parseInt(response.headers.get('X-Original-Size') || file.size);
+                const compressedSize = parseInt(response.headers.get('X-Compressed-Size') || blob.size);
+                const compressionRatio = response.headers.get('X-Compression-Ratio');
+                
+                // Create download link
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `compressed-${file.name}`;
+                
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    <strong>Compression Successful!</strong><br>
+                    Original Size: ${formatBytes(originalSize)}<br>
+                    Compressed Size: ${formatBytes(compressedSize)}<br>
+                    ${compressionRatio ? `Reduction: ${compressionRatio}%<br>` : ''}
+                    <a href="${url}" download="${a.download}">Download Compressed PDF</a>
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Auto-check health on page load
+        window.addEventListener('load', testHealth);
+    </script>
+</body>
+</html>

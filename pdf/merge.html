@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Merge PDFs — Cloud AI Utility</title>
   <link rel="stylesheet" href="../css/style.css">
-  <link rel="stylesheet" href="css/pdf.css">
+    <link rel="stylesheet" href="../css/pdf-processor.css">
 </head>
 <body>
   <header>
@@ -16,30 +16,128 @@
     </nav>
   </header>
   <main class="pdf-tool-page">
-    <h1>Merge PDFs</h1>
+    <h1>PDF Merge & Processing</h1>
 
-    <section class="merge-panel">
-      <div id="drop-area" class="drop-area" tabindex="0" aria-label="Drop PDF files here or click to select">
-        <p>Drop PDF files here, or <button id="browse-btn" class="link-button">browse</button></p>
-        <input id="file-input" type="file" accept="application/pdf" multiple hidden>
-      </div>
+    <div class="pdf-processor">
+      <!-- Upload Section -->
+      <section class="upload-section">
+        <h2>Upload Files</h2>
+        <div id="drop-area" class="drop-area" tabindex="0" aria-label="Drop PDF files here or click to select">
+          <div class="drop-content">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14,2 14,8 20,8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10,9 9,9 8,9"></polyline>
+            </svg>
+            <p>Drop PDF files here, or <button id="browse-btn" class="link-button">browse</button></p>
+            <small>Max 50MB per file • PDF format only</small>
+          </div>
+          <input id="file-input" type="file" accept="application/pdf" multiple hidden>
+        </div>
+      </section>
 
-      <div id="file-list-wrapper">
-        <h2>Files</h2>
-        <ul id="file-list" class="file-list" role="list"></ul>
-      </div>
+      <!-- File List Section -->
+      <section class="file-section">
+        <div class="section-header">
+          <h2>Files</h2>
+        <div id="file-stats" class="file-stats">No files selected</div>
+        <div id="file-list" class="file-list" role="list"></div>
+      </section>
 
-      <div class="actions">
-        <button id="merge-btn" class="primary" disabled>Merge PDFs</button>
-        <span id="status" role="status" aria-live="polite"></span>
-      </div>
-    </section>
+      <!-- Page Split Section -->
+      <section class="split-section">
+        <h2>Page Selection (Optional)</h2>
+        <div class="split-controls">
+          <label for="page-ranges">
+            <span>Page ranges (e.g., 1-3,5,7-8):</span>
+            <input type="text" id="page-ranges" placeholder="Leave empty to include all pages" />
+          </label>
+          <small class="help-text">
+            Specify which pages to include from each file. Use commas to separate ranges.
+          </small>
+        </div>
+      </section>
+
+      <!-- Compression Section -->
+      <section class="compression-section">
+        <h2>Compression Settings</h2>
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" name="compression" value="none" id="compression-none" checked>
+            <label for="compression-none">
+              <div class="option-title">No Compression</div>
+              <div class="option-description">Keep original quality and file size</div>
+            </label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" name="compression" value="standard" id="compression-standard">
+            <label for="compression-standard">
+              <div class="option-title">Standard</div>
+              <div class="option-description">Balanced quality and compression</div>
+            </label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" name="compression" value="strong" id="compression-strong">
+            <label for="compression-strong">
+              <div class="option-title">Strong</div>
+              <div class="option-description">Maximum compression, smaller file</div>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Progress Section -->
+      <section class="progress-section" id="progress-section" style="display: none;">
+        <h2>Processing</h2>
+        <div class="progress-bar-container">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <div id="progress-text" class="progress-text">Preparing...</div>
+      </section>
+
+      <!-- Actions Section -->
+      <section class="actions-section">
+        <div class="actions">
+          <button id="process-btn" class="primary" disabled>
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14,2 14,8 20,8"></polyline>
+            </svg>
+            Process PDFs
+          </button>
+          <button id="clear-btn" class="secondary" style="display: none;">Clear All</button>
+        </div>
+        <div id="download-section" class="download-section" style="display: none;">
+          <div class="download-content">
+            <svg class="download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="8,12 12,16 16,12"></polyline>
+              <line x1="12" y1="8" x2="12" y2="16"></line>
+            </svg>
+            <p>Your PDF has been processed successfully!</p>
+            <a id="download-btn" class="download-button" download>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7,10 12,15 17,10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Download PDF
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Status Messages -->
+      <div id="status-message" role="status" aria-live="polite" class="status-message"></div>
+    </div>
   </main>
 
   <footer>
     <p>&copy; 2025 Utility App</p>
   </footer>
 
-  <script src="../js/pdf-merge.js" type="module"></script>
+  <script src="../js/pdf-processor.js" type="module"></script>
 </body>
 </html>
