@@ -76,6 +76,14 @@ class EnhancedPDFProcessor {
     }
 
     console.log('✅ All DOM elements initialized');
+    
+    // Debug: Check if complete merge button exists
+    console.log('Complete Merge Button:', this.elements.completeMergeBtn);
+    if (this.elements.completeMergeBtn) {
+      console.log('✅ Complete Merge Button found');
+    } else {
+      console.warn('⚠️ Complete Merge Button not found!');
+    }
   }
 
   bindEvents() {
@@ -106,7 +114,14 @@ class EnhancedPDFProcessor {
     }
 
     if (this.elements.completeMergeBtn) {
-      this.elements.completeMergeBtn.addEventListener('click', () => this.completeMerge());
+      console.log('🔗 Setting up Complete Merge button event listener');
+      this.elements.completeMergeBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        console.log('🚀 Complete Merge button clicked');
+        await this.completeMerge();
+      });
+    } else {
+      console.error('❌ Cannot set up Complete Merge button - element not found');
     }
 
     // Download button
@@ -198,6 +213,7 @@ class EnhancedPDFProcessor {
         pageCount: pdfInfo.pageCount,
         title: pdfInfo.title,
         pdfDoc: pdfInfo.pdfDoc,
+        pdfJSDoc: pdfInfo.pdfJSDoc,
         isEncrypted: pdfInfo.isEncrypted,
         addedAt: new Date()
       };
@@ -254,7 +270,8 @@ class EnhancedPDFProcessor {
       if (!headerString.startsWith('%PDF-')) {
         throw new Error('Invalid PDF file format');
       }
-      
+
+      // Load with pdf-lib for manipulation
       const pdfLib = await this.loadPDFLib();
       const pdfDoc = await pdfLib.PDFDocument.load(arrayBuffer, {
         ignoreEncryption: false
@@ -263,10 +280,25 @@ class EnhancedPDFProcessor {
       const pageCount = pdfDoc.getPageCount();
       const title = pdfDoc.getTitle() || file.name.replace(/\.[^/.]+$/, '');
       
+      // Try to load with PDF.js for rendering (optional)
+      let pdfJSDoc = null;
+      try {
+        const pdfjsLib = await this.loadPDFJS();
+        pdfJSDoc = await pdfjsLib.getDocument({
+          data: arrayBuffer,
+          cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+          cMapPacked: true
+        }).promise;
+        console.log('✅ PDF.js document loaded for rendering');
+      } catch (pdfJSError) {
+        console.warn('⚠️ PDF.js loading failed, page previews will use placeholders:', pdfJSError.message);
+      }
+      
       console.log(`✅ PDF analysis complete: ${pageCount} pages`);
       
       return {
-        pdfDoc,
+        pdfDoc,        // pdf-lib document for manipulation
+        pdfJSDoc,      // PDF.js document for rendering (may be null)
         pageCount,
         title,
         isEncrypted: false
@@ -302,6 +334,27 @@ class EnhancedPDFProcessor {
         throw new Error('Failed to load PDF processing library. Please check your internet connection.');
       }
     }
+  }
+
+  async loadPDFJS() {
+    // Wait for PDF.js to be fully loaded with retries
+    let retries = 0;
+    const maxRetries = 20; // 2 seconds total
+    
+    while (retries < maxRetries) {
+      if (window.pdfjsLib && window.pdfjsLib.getDocument) {
+        console.log('✅ PDF.js fully loaded and ready');
+        return window.pdfjsLib;
+      }
+      
+      console.log(`⏳ Waiting for PDF.js... attempt ${retries + 1}/${maxRetries}`);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      retries++;
+    }
+    
+    console.error('⚠️ PDF.js not found after waiting');
+    console.log('Available on window:', Object.keys(window).filter(key => key.toLowerCase().includes('pdf')));
+    throw new Error('PDF.js library not loaded. Page previews will not be available.');
   }
 
   // Drag and Drop Handlers
@@ -420,6 +473,7 @@ class EnhancedPDFProcessor {
     try {
       this.showStatus('Preparing page previews...', 'info');
       await this.generatePagePreviews();
+      this.generateFileLabels();
       this.renderPagePreviews();
       this.elements.pagePreviewModal.style.display = 'flex';
       document.body.style.overflow = 'hidden'; // Prevent body scroll
@@ -438,7 +492,11 @@ class EnhancedPDFProcessor {
     this.pages = [];
     let globalPageNumber = 1;
 
+    console.log('Starting simple page preview generation...');
+
     for (const fileRecord of this.files.values()) {
+      console.log(`Processing ${fileRecord.name}...`);
+      
       for (let pageIndex = 0; pageIndex < fileRecord.pageCount; pageIndex++) {
         const pageObj = {
           id: `${fileRecord.id}-page-${pageIndex}`,
@@ -447,14 +505,51 @@ class EnhancedPDFProcessor {
           pageNumber: pageIndex + 1,
           globalPageNumber: globalPageNumber++,
           filePageIndex: pageIndex,
-          pdfDoc: fileRecord.pdfDoc
+          pdfDoc: fileRecord.pdfDoc,
+          pdfJSDoc: fileRecord.pdfJSDoc
         };
         
         this.pages.push(pageObj);
       }
     }
 
-    console.log(`Generated ${this.pages.length} page previews`);
+    console.log(`Generated ${this.pages.length} pages`);
+  }
+
+  generateFileLabels() {
+    const fileLabelsContainer = document.querySelector('.file-labels');
+    if (!fileLabelsContainer) return;
+
+    fileLabelsContainer.innerHTML = '';
+
+    // Create a map to assign colors to files
+    const uniqueFiles = new Map();
+    let colorIndex = 0;
+
+    // First pass: collect unique files and assign colors
+    for (const fileRecord of this.files.values()) {
+      if (!uniqueFiles.has(fileRecord.id)) {
+        uniqueFiles.set(fileRecord.id, {
+          name: fileRecord.name,
+          colorIndex: colorIndex % 8 // We have 8 color variants
+        });
+        colorIndex++;
+      }
+    }
+
+    // Store file colors for use in page cards
+    this.fileColors = uniqueFiles;
+
+    // Create file labels
+    for (const [fileId, fileInfo] of uniqueFiles) {
+      const label = document.createElement('div');
+      label.className = `file-label file-color-${fileInfo.colorIndex}`;
+      label.innerHTML = `
+        <div class="file-color-dot"></div>
+        <span class="file-name">${fileInfo.name}</span>
+      `;
+      fileLabelsContainer.appendChild(label);
+    }
   }
 
   renderPagePreviews() {
@@ -463,12 +558,60 @@ class EnhancedPDFProcessor {
 
     container.innerHTML = '';
 
+    // Add initial plus button
+    const initialPlus = this.createInsertZone(0);
+    container.appendChild(initialPlus);
+
     this.pages.forEach((page, index) => {
       const pageCard = this.createPageCard(page, index);
       container.appendChild(pageCard);
+      
+      // Add plus button after each page (except the last one)
+      if (index < this.pages.length - 1) {
+        const plusButton = this.createInsertZone(index + 1);
+        container.appendChild(plusButton);
+      }
     });
 
+    // Add final plus button
+    const finalPlus = this.createInsertZone(this.pages.length);
+    container.appendChild(finalPlus);
+
     this.bindPageCardEvents();
+  }
+
+  createInsertZone(insertIndex) {
+    const zone = document.createElement('div');
+    zone.className = 'page-insert-zone';
+    zone.dataset.insertIndex = insertIndex;
+
+    const plus = document.createElement('div');
+    plus.className = 'page-insert-plus';
+    plus.innerHTML = '+';
+
+    zone.appendChild(plus);
+
+    // Add drag and drop event listeners
+    zone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      zone.classList.add('drag-over');
+    });
+
+    zone.addEventListener('dragleave', (e) => {
+      zone.classList.remove('drag-over');
+    });
+
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      
+      const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
+      const targetIndex = parseInt(zone.dataset.insertIndex);
+      
+      this.movePageToPosition(draggedIndex, targetIndex);
+    });
+
+    return zone;
   }
 
   createPageCard(page, index) {
@@ -478,14 +621,903 @@ class EnhancedPDFProcessor {
     card.dataset.pageId = page.id;
     card.dataset.index = index;
 
-    card.innerHTML = `
-      <button class="page-remove" onclick="enhancedPdfProcessor.removePage(${index})" title="Remove this page">×</button>
-      <div class="page-preview">📄</div>
-      <div class="page-number">Page ${page.globalPageNumber}</div>
-      <div class="page-file">${page.fileName}</div>
-    `;
+    // Apply color coding
+    if (this.fileColors && this.fileColors.has(page.fileId)) {
+      const colorIndex = this.fileColors.get(page.fileId).colorIndex;
+      card.classList.add(`file-color-${colorIndex}`);
+    }
+
+    // Create remove button
+    const removeButton = document.createElement('button');
+    removeButton.className = 'page-remove';
+    removeButton.innerHTML = '×';
+    removeButton.onclick = () => enhancedPdfProcessor.removePage(index);
+
+    // Create preview container
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'page-preview';
+
+    // Create page number
+    const pageNumberDiv = document.createElement('div');
+    pageNumberDiv.className = 'page-number';
+    pageNumberDiv.textContent = page.globalPageNumber;
+
+    // Try to render the PDF page directly
+    if (page.pdfJSDoc) {
+      this.renderPageToDiv(page.pdfJSDoc, page.filePageIndex, previewDiv);
+    } else {
+      previewDiv.innerHTML = '<div class="page-placeholder">📄</div>';
+    }
+
+    // Add double-click functionality for fullscreen preview
+    previewDiv.addEventListener('dblclick', (e) => {
+      this.showFullscreenPreview(page);
+    });
+
+    card.appendChild(removeButton);
+    card.appendChild(previewDiv);
+    card.appendChild(pageNumberDiv);
 
     return card;
+  }
+
+  async renderPageToDiv(pdfJSDoc, pageIndex, container) {
+    try {
+      console.log(`Attempting to render page ${pageIndex + 1} from PDF with ${pdfJSDoc.numPages} pages`);
+      
+      // Validate page index
+      if (pageIndex < 0 || pageIndex >= pdfJSDoc.numPages) {
+        throw new Error(`Invalid page index ${pageIndex + 1}. PDF has ${pdfJSDoc.numPages} pages.`);
+      }
+      
+      const page = await pdfJSDoc.getPage(pageIndex + 1);
+      const scale = 0.5;
+      const viewport = page.getViewport({ scale });
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      canvas.style.objectFit = 'contain';
+
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+
+      await page.render(renderContext).promise;
+      container.innerHTML = '';
+      container.appendChild(canvas);
+      
+      console.log(`✅ Rendered page ${pageIndex + 1} successfully`);
+    } catch (error) {
+      console.error(`❌ Failed to render page ${pageIndex + 1}:`, error);
+      console.error('PDF info:', {
+        numPages: pdfJSDoc?.numPages,
+        requestedIndex: pageIndex + 1
+      });
+      container.innerHTML = '<div class="page-placeholder">📄<br>Failed to load</div>';
+    }
+  }
+
+  async showFullscreenPreview(page) {
+    try {
+      // Create overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'page-fullscreen-overlay';
+
+      // Create content container
+      const content = document.createElement('div');
+      content.className = 'page-fullscreen-content';
+
+      // Create edit button
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-page-btn';
+      editBtn.textContent = 'Edit This Page';
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        this.enterEditMode(page, content, overlay);
+      };
+
+      // Render high-quality version of the page
+      if (page.pdfJSDoc) {
+        const pdfPage = await page.pdfJSDoc.getPage(page.filePageIndex + 1);
+        const scale = 2; // Higher scale for fullscreen
+        const viewport = pdfPage.getViewport({ scale });
+
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport
+        };
+
+        await pdfPage.render(renderContext).promise;
+        content.appendChild(canvas);
+      } else {
+        content.innerHTML = '<div style="color: #666; font-size: 3rem;">📄</div>';
+      }
+
+      content.appendChild(editBtn);
+      overlay.appendChild(content);
+      document.body.appendChild(overlay);
+
+      // Add event listeners for closing
+      const closeFullscreen = () => {
+        document.body.removeChild(overlay);
+        document.removeEventListener('keydown', handleKeyDown);
+        overlay.removeEventListener('click', closeFullscreen);
+      };
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          closeFullscreen();
+        }
+      };
+
+      // Close on click anywhere on overlay or escape key
+      overlay.addEventListener('click', closeFullscreen);
+      document.addEventListener('keydown', handleKeyDown);
+
+      // Prevent the overlay from closing when clicking the content
+      content.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+    } catch (error) {
+      console.error('Failed to show fullscreen preview:', error);
+    }
+  }
+
+  async enterEditMode(page, content, overlay) {
+    try {
+      console.log('Entering edit mode for page:', page);
+      
+      // Clear existing content
+      content.innerHTML = '';
+      content.classList.add('editing-mode');
+
+      // Create editor container
+      const editorContainer = document.createElement('div');
+      editorContainer.className = 'pdf-editor-container';
+
+      // Add mouse wheel zoom functionality
+      editorContainer.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          this.handleZoom('in');
+        } else {
+          this.handleZoom('out');
+        }
+      });
+
+      // Create canvas container first
+      const canvasContainer = document.createElement('div');
+      canvasContainer.className = 'editor-canvas-container';
+
+      // Render PDF page with higher quality
+      const pdfPage = await page.pdfJSDoc.getPage(page.filePageIndex + 1);
+      this.currentEditScale = 1.0; // Start with 100% scale
+      const viewport = pdfPage.getViewport({ scale: this.currentEditScale });
+
+      console.log('Rendering PDF at scale:', this.currentEditScale, 'viewport:', viewport.width, 'x', viewport.height);
+
+      // PDF layer (background) - this shows the actual PDF content
+      const pdfCanvas = document.createElement('canvas');
+      pdfCanvas.className = 'pdf-layer';
+      pdfCanvas.width = viewport.width;
+      pdfCanvas.height = viewport.height;
+      pdfCanvas.style.display = 'block';
+      pdfCanvas.style.border = '1px solid #ddd';
+      
+      const pdfContext = pdfCanvas.getContext('2d');
+      await pdfPage.render({
+        canvasContext: pdfContext,
+        viewport: viewport
+      }).promise;
+
+      console.log('PDF rendered successfully');
+
+      // Edit layer (annotations overlay)
+      const editCanvas = document.createElement('canvas');
+      editCanvas.className = 'edit-layer';
+      editCanvas.width = viewport.width;
+      editCanvas.height = viewport.height;
+
+      // Interaction layer (click handling)
+      const interactionDiv = document.createElement('div');
+      interactionDiv.className = 'interaction-layer';
+      interactionDiv.style.width = viewport.width + 'px';
+      interactionDiv.style.height = viewport.height + 'px';
+
+      // Set up editing state
+      this.currentPage = page;
+      this.editCanvas = editCanvas;
+      this.editContext = editCanvas.getContext('2d');
+      this.pdfCanvas = pdfCanvas;
+      this.interactionLayer = interactionDiv;
+      this.editMode = 'view';
+      this.textAnnotations = [];
+      this.wipeAnnotations = [];
+      this.actionHistory = []; // For undo functionality
+      this.currentFont = 'Arial';
+      this.currentFontSize = 16;
+      this.currentColor = '#000000';
+
+      // Store base dimensions for accurate saving
+      const viewport1 = pdfPage.getViewport({ scale: 1.0 });
+      this.baseCanvasWidth = viewport1.width;
+      this.baseCanvasHeight = viewport1.height;
+
+      // Add event listeners
+      this.setupEditingEvents();
+
+      // Assemble editor - PDF must be visible
+      canvasContainer.appendChild(pdfCanvas);
+      canvasContainer.appendChild(editCanvas);
+      canvasContainer.appendChild(interactionDiv);
+      
+      editorContainer.appendChild(canvasContainer);
+      content.appendChild(editorContainer);
+      
+      // Create and add toolbar to body for proper positioning
+      const toolbar = this.createEditorToolbar();
+      document.body.appendChild(toolbar);
+
+      // Update overlay click behavior to prevent accidental closing
+      overlay.onclick = null; // remove previous general click listener
+      overlay.addEventListener('click', (e) => {
+        // This event listener is intentionally left blank to prevent clicks on the
+        // overlay from closing the editor. Closing is handled by the "Cancel" button.
+        e.stopPropagation();
+      });
+
+      console.log('Edit mode setup complete');
+
+    } catch (error) {
+      console.error('Failed to enter edit mode:', error);
+      alert('Failed to enter edit mode. Please try again.');
+    }
+  }
+
+  createEditorToolbar() {
+    const toolbar = document.createElement('div');
+    toolbar.className = 'editor-toolbar';
+
+    toolbar.innerHTML = `
+      <button class="tool-btn" data-tool="add-text">Add Text</button>
+      <button class="tool-btn" data-tool="wipe-text">Wipe Text</button>
+      <button class="tool-btn" data-tool="undo" disabled>Undo</button>
+      
+      <div class="font-controls">
+        <select id="font-family">
+          <option value="Arial">Arial</option>
+          <option value="Times">Times</option>
+          <option value="Courier">Courier</option>
+          <option value="Helvetica">Helvetica</option>
+        </select>
+        <input type="number" id="font-size" min="8" max="72" value="16" style="width: 60px;">
+        <input type="color" id="text-color" value="#000000">
+      </div>
+
+      <div class="zoom-controls">
+        <button class="zoom-btn" data-zoom="out">-</button>
+        <span id="zoom-level">150%</span>
+        <button class="zoom-btn" data-zoom="in">+</button>
+      </div>
+
+      <button class="tool-btn save" data-tool="save">Save Page</button>
+      <button class="tool-btn" data-tool="cancel">Cancel</button>
+    `;
+
+    // Add event listeners
+    toolbar.addEventListener('click', async (e) => {
+      const tool = e.target.dataset.tool;
+      const zoom = e.target.dataset.zoom;
+      
+      if (tool) {
+        await this.handleToolClick(tool, e.target);
+      } else if (zoom) {
+        this.handleZoom(zoom);
+      }
+    });
+
+    // Font controls
+    toolbar.querySelector('#font-family').addEventListener('change', (e) => {
+      this.currentFont = e.target.value;
+    });
+
+    toolbar.querySelector('#font-size').addEventListener('change', (e) => {
+      this.currentFontSize = parseInt(e.target.value);
+    });
+
+    toolbar.querySelector('#text-color').addEventListener('change', (e) => {
+      this.currentColor = e.target.value;
+    });
+
+    return toolbar;
+  }
+
+  setupEditingEvents() {
+    let isWiping = false;
+    let wipeStartX, wipeStartY;
+    let selectionBox = null;
+
+    this.interactionLayer.addEventListener('mousedown', (e) => {
+      if (this.editMode === 'wipe-text') {
+        isWiping = true;
+        wipeStartX = e.offsetX;
+        wipeStartY = e.offsetY;
+        
+        // Create selection box
+        selectionBox = document.createElement('div');
+        selectionBox.className = 'wipe-selection-box';
+        this.interactionLayer.appendChild(selectionBox);
+        
+        this.interactionLayer.style.cursor = 'crosshair';
+      }
+    });
+
+    this.interactionLayer.addEventListener('mousemove', (e) => {
+      if (this.editMode === 'wipe-text' && isWiping) {
+        const currentX = e.offsetX;
+        const currentY = e.offsetY;
+        
+        const rect = {
+          x: Math.min(wipeStartX, currentX),
+          y: Math.min(wipeStartY, currentY),
+          width: Math.abs(currentX - wipeStartX),
+          height: Math.abs(currentY - wipeStartY)
+        };
+        
+        selectionBox.style.left = rect.x + 'px';
+        selectionBox.style.top = rect.y + 'px';
+        selectionBox.style.width = rect.width + 'px';
+        selectionBox.style.height = rect.height + 'px';
+      }
+    });
+
+    this.interactionLayer.addEventListener('mouseup', (e) => {
+      if (this.editMode === 'wipe-text' && isWiping) {
+        isWiping = false;
+        
+        // Remove selection box
+        if (selectionBox) {
+          this.interactionLayer.removeChild(selectionBox);
+          selectionBox = null;
+        }
+        
+        const wipeEndX = e.offsetX;
+        const wipeEndY = e.offsetY;
+        
+        const rect = {
+          x: Math.min(wipeStartX, wipeEndX) / this.currentEditScale,
+          y: Math.min(wipeStartY, wipeEndY) / this.currentEditScale,
+          width: Math.abs(wipeEndX - wipeStartX) / this.currentEditScale,
+          height: Math.abs(wipeEndY - wipeStartY) / this.currentEditScale
+        };
+        
+        if (rect.width > 0 && rect.height > 0) {
+          this.addWipeAnnotation(rect);
+        }
+      }
+    });
+
+    this.interactionLayer.addEventListener('click', (e) => {
+      if (this.editMode === 'add-text') {
+        this.addTextAtPosition(e);
+      }
+    });
+  }
+
+  async handleToolClick(tool, button) {
+    // Reset all buttons
+    document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+    
+    switch (tool) {
+      case 'add-text':
+        this.editMode = 'add-text';
+        button.classList.add('active');
+        this.interactionLayer.style.cursor = 'text';
+        break;
+      
+      case 'wipe-text':
+        this.editMode = 'wipe-text';
+        button.classList.add('active');
+        this.interactionLayer.style.cursor = 'crosshair';
+        break;
+      
+      case 'undo':
+        this.undoLastAction();
+        break;
+        
+      case 'save':
+        // Show saving state
+        button.textContent = 'Saving...';
+        button.disabled = true;
+        
+        await this.saveEditedPage();
+        
+        // Button will be removed when edit mode exits, so no need to reset
+        break;
+        
+      case 'cancel':
+        this.exitEditMode();
+        break;
+    }
+  }
+
+  handleZoom(direction) {
+    const zoomStep = 0.25;
+    const minZoom = 0.5;
+    const maxZoom = 3.0;
+    
+    if (direction === 'in' && this.currentEditScale < maxZoom) {
+      this.currentEditScale += zoomStep;
+    } else if (direction === 'out' && this.currentEditScale > minZoom) {
+      this.currentEditScale -= zoomStep;
+    }
+    
+    this.updateZoomLevel();
+  }
+
+  async updateZoomLevel() {
+    // Update zoom display
+    document.getElementById('zoom-level').textContent = Math.round(this.currentEditScale * 100) + '%';
+    
+    // Get the current viewport dimensions
+    const oldWidth = this.pdfCanvas.width;
+    const oldHeight = this.pdfCanvas.height;
+
+    // Re-render at new scale
+    const pdfPage = await this.currentPage.pdfJSDoc.getPage(this.currentPage.filePageIndex + 1);
+    const viewport = pdfPage.getViewport({ scale: this.currentEditScale });
+    
+    // Update canvas sizes
+    this.pdfCanvas.width = viewport.width;
+    this.pdfCanvas.height = viewport.height;
+    this.editCanvas.width = viewport.width;
+    this.editCanvas.height = viewport.height;
+    this.interactionLayer.style.width = viewport.width + 'px';
+    this.interactionLayer.style.height = viewport.height + 'px';
+    
+    // Re-render PDF
+    const pdfContext = this.pdfCanvas.getContext('2d');
+    await pdfPage.render({
+      canvasContext: pdfContext,
+      viewport: viewport
+    }).promise;
+    
+    // Re-render annotations, scaling their positions
+    const scaleX = viewport.width / oldWidth;
+    const scaleY = viewport.height / oldHeight;
+    this.redrawAnnotations(scaleX, scaleY);
+  }
+
+  addTextAtPosition(event) {
+    const rect = this.interactionLayer.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    // Create text input box
+    const textBox = document.createElement('div');
+    textBox.className = 'text-input-box';
+    textBox.style.left = x + 'px';
+    textBox.style.top = y + 'px';
+    textBox.style.fontFamily = this.currentFont;
+    textBox.style.fontSize = this.currentFontSize + 'px';
+    textBox.style.color = this.currentColor;
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Enter text...';
+    input.style.fontFamily = this.currentFont;
+    input.style.fontSize = this.currentFontSize + 'px';
+    input.style.color = this.currentColor;
+    
+    textBox.appendChild(input);
+    this.interactionLayer.appendChild(textBox);
+    
+    input.focus();
+    
+    // Handle text completion
+    let isCompleted = false;
+    const completeText = () => {
+      if (isCompleted) return; // Prevent multiple calls
+      isCompleted = true;
+      
+      if (input.value.trim()) {
+        this.addTextAnnotation({
+          x: x,
+          y: y,
+          text: input.value,
+          font: this.currentFont,
+          fontSize: this.currentFontSize,
+          color: this.currentColor
+        });
+      }
+      
+      // Safely remove the text box
+      try {
+        if (textBox && textBox.parentNode === this.interactionLayer) {
+          this.interactionLayer.removeChild(textBox);
+        }
+      } catch (error) {
+        console.warn('Text box already removed:', error.message);
+      }
+    };
+    
+    input.addEventListener('blur', completeText);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        completeText();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        isCompleted = true;
+        try {
+          if (textBox && textBox.parentNode === this.interactionLayer) {
+            this.interactionLayer.removeChild(textBox);
+          }
+        } catch (error) {
+          console.warn('Text box already removed:', error.message);
+        }
+      }
+    });
+  }
+
+  addTextAnnotation(annotation) {
+    // Adjust position based on current scale
+    annotation.x /= this.currentEditScale;
+    annotation.y /= this.currentEditScale;
+    
+    this.textAnnotations.push(annotation);
+    this.actionHistory.push({ type: 'add-text', annotation: annotation });
+    this.updateUndoButton();
+    this.redrawAnnotations();
+  }
+
+  redrawAnnotations(scaleX = 1, scaleY = 1) {
+    // Clear edit canvas
+    this.editContext.clearRect(0, 0, this.editCanvas.width, this.editCanvas.height);
+    
+    // Draw all text annotations
+    this.textAnnotations.forEach(annotation => {
+      // Scale position if needed
+      annotation.x *= scaleX;
+      annotation.y *= scaleY;
+      
+      this.editContext.font = `${annotation.fontSize * this.currentEditScale}px ${annotation.font}`;
+      this.editContext.fillStyle = annotation.color;
+      this.editContext.fillText(annotation.text, annotation.x, annotation.y + (annotation.fontSize * this.currentEditScale));
+    });
+
+    // Draw all wipe annotations
+    if (this.wipeAnnotations) {
+      this.wipeAnnotations.forEach(rect => {
+        // Scale position and size if needed
+        rect.x *= scaleX;
+        rect.y *= scaleY;
+        rect.width *= scaleX;
+        rect.height *= scaleY;
+        
+        this.editContext.fillStyle = 'white';
+        this.editContext.fillRect(rect.x, rect.y, rect.width, rect.height);
+      });
+    }
+  }
+
+  addWipeAnnotation(rect) {
+    // For now, we'll just draw a white rectangle on the edit canvas
+    // In a more advanced implementation, this would be stored as a specific annotation type
+    this.editContext.fillStyle = 'white';
+    this.editContext.fillRect(rect.x * this.currentEditScale, rect.y * this.currentEditScale, rect.width * this.currentEditScale, rect.height * this.currentEditScale);
+    
+    // To make the wipe permanent, we need to add it to a list of annotations
+    // that will be applied when saving.
+    if (!this.wipeAnnotations) {
+      this.wipeAnnotations = [];
+    }
+    this.wipeAnnotations.push(rect);
+    this.actionHistory.push({ type: 'wipe-text', rect: rect });
+    this.updateUndoButton();
+    
+    console.log('Added wipe annotation:', rect);
+  }
+
+  undoLastAction() {
+    if (this.actionHistory.length === 0) return;
+
+    const lastAction = this.actionHistory.pop();
+
+    if (lastAction.type === 'add-text') {
+      this.textAnnotations.pop();
+    } else if (lastAction.type === 'wipe-text') {
+      this.wipeAnnotations.pop();
+    }
+
+    this.redrawAnnotations();
+    this.updateUndoButton();
+  }
+
+  updateUndoButton() {
+    const undoButton = document.querySelector('.tool-btn[data-tool="undo"]');
+    if (undoButton) {
+      undoButton.disabled = this.actionHistory.length === 0;
+    }
+  }
+
+  async saveEditedPage() {
+    this.showLoading('Saving page edits...');
+    try {
+      console.log('=== SAVE EDITED PAGE START ===');
+      console.log('Current page info:', {
+        id: this.currentPage?.id,
+        fileName: this.currentPage?.fileName,
+        isModified: this.currentPage?.isModified,
+        hasOriginalPdfDoc: !!this.currentPage?.pdfDoc
+      });
+      console.log('Saving edited page with', this.textAnnotations.length, 'text annotations and', this.wipeAnnotations.length, 'wipe annotations.');
+      
+      // Load PDFLib if not already loaded
+      const pdfLib = await this.loadPDFLib();
+      console.log('PDFLib loaded successfully');
+      
+      // Create new PDF page with modifications
+      const pdfDoc = await pdfLib.PDFDocument.create();
+      const [existingPage] = await pdfDoc.copyPages(this.currentPage.pdfDoc, [this.currentPage.filePageIndex]);
+      const page = pdfDoc.addPage(existingPage);
+      
+      // Get the original PDF page viewport at scale 1.0 to calculate the correct scaling factor
+      const scaleFactor = page.getWidth() / this.baseCanvasWidth;
+
+      // Add text annotations to PDF
+      for (const annotation of this.textAnnotations) {
+        const pageHeight = page.getHeight();
+        
+        page.drawText(annotation.text, {
+          x: annotation.x * scaleFactor,
+          y: pageHeight - (annotation.y * scaleFactor) - (annotation.fontSize * scaleFactor * 0.2), // Fine-tune baseline
+          size: annotation.fontSize * scaleFactor,
+          font: await pdfDoc.embedFont(pdfLib.StandardFonts[annotation.font] || pdfLib.StandardFonts.Helvetica),
+          color: pdfLib.rgb(
+            parseInt(annotation.color.slice(1, 3), 16) / 255,
+            parseInt(annotation.color.slice(3, 5), 16) / 255,
+            parseInt(annotation.color.slice(5, 7), 16) / 255
+          )
+        });
+      }
+      
+      // Add wipe annotations to PDF
+      if (this.wipeAnnotations) {
+        for (const rect of this.wipeAnnotations) {
+          const pageHeight = page.getHeight();
+          
+          page.drawRectangle({
+            x: rect.x * scaleFactor,
+            y: pageHeight - ((rect.y + rect.height) * scaleFactor),
+            width: rect.width * scaleFactor,
+            height: rect.height * scaleFactor,
+            color: pdfLib.rgb(1, 1, 1), // White
+            opacity: 1,
+          });
+        }
+      }
+      
+      // Generate the updated PDF bytes
+      const pdfBytes = await pdfDoc.save();
+      console.log('PDF saved, bytes length:', pdfBytes.length);
+      console.log('PDF bytes type:', typeof pdfBytes);
+      console.log('PDF bytes constructor:', pdfBytes.constructor.name);
+      console.log('PDF bytes is Uint8Array:', pdfBytes instanceof Uint8Array);
+      
+      // Validate PDF data
+      if (!pdfBytes || pdfBytes.length === 0) {
+        throw new Error('Generated PDF data is empty');
+      }
+      
+      // Ensure we have a proper Uint8Array
+      let validPdfBytes;
+      if (pdfBytes instanceof Uint8Array) {
+        validPdfBytes = pdfBytes;
+      } else if (Array.isArray(pdfBytes)) {
+        validPdfBytes = new Uint8Array(pdfBytes);
+        console.log('✅ Converted array to Uint8Array');
+      } else {
+        throw new Error('Invalid PDF data type: ' + typeof pdfBytes);
+      }
+      
+      // Test loading the PDF to ensure it's valid
+      try {
+        const testPdf = await pdfLib.PDFDocument.load(validPdfBytes);
+        console.log('✅ PDF validation successful, pages:', testPdf.getPageCount());
+      } catch (validationError) {
+        console.error('❌ PDF validation failed:', validationError);
+        throw new Error('Generated PDF is corrupted: ' + validationError.message);
+      }
+      
+      // Update the page data in our system with backup
+      this.currentPage.pdfData = validPdfBytes;
+      this.currentPage.isModified = true;
+      
+      // Create a backup in the global pages array as well
+      const pageIndex = this.pages.findIndex(p => p.id === this.currentPage.id);
+      if (pageIndex !== -1) {
+        this.pages[pageIndex].pdfData = validPdfBytes;
+        this.pages[pageIndex].isModified = true;
+        console.log('✅ Backup PDF data stored in pages array');
+        console.log('Backup data type:', this.pages[pageIndex].pdfData.constructor.name);
+        console.log('Backup data size:', this.pages[pageIndex].pdfData.length);
+      } else {
+        console.warn('⚠️ Could not find page in pages array for backup');
+      }
+      
+      // For edited pages, the filePageIndex should be 0 since we create a single-page PDF
+      this.currentPage.editedPageIndex = 0;
+      
+      // Reload the PDF for future operations
+      const updatedPdfDoc = await pdfLib.PDFDocument.load(validPdfBytes);
+      this.currentPage.pdfDoc = updatedPdfDoc;
+      
+      // Also update PDF.js document for previews
+      try {
+        // Pass a copy of the data to PDF.js to prevent the original buffer from being detached.
+        // This is the crucial fix for the "detached ArrayBuffer" error.
+        const pdfDataForPreview = new Uint8Array(validPdfBytes);
+        const updatedPdfJSDoc = await pdfjsLib.getDocument({data: pdfDataForPreview}).promise;
+        this.currentPage.pdfJSDoc = updatedPdfJSDoc;
+        console.log('✅ PDF.js document updated, pages:', updatedPdfJSDoc.numPages);
+      } catch (pdfjsError) {
+        console.error('❌ Failed to load PDF with PDF.js:', pdfjsError);
+        throw new Error('Failed to create PDF.js document: ' + pdfjsError.message);
+      }
+      
+      console.log('Page data updated successfully');
+      
+      // Final validation: Ensure the data persisted correctly
+      console.log('Final validation:');
+      console.log('- currentPage.pdfData size:', this.currentPage.pdfData ? this.currentPage.pdfData.length : 0);
+      console.log('- currentPage.pdfData type:', this.currentPage.pdfData ? this.currentPage.pdfData.constructor.name : 'none');
+      console.log('- currentPage.isModified:', this.currentPage.isModified);
+      
+      const pageInArray = this.pages.find(p => p.id === this.currentPage.id);
+      if (pageInArray) {
+        console.log('- pages array backup size:', pageInArray.pdfData ? pageInArray.pdfData.length : 0);
+        console.log('- pages array backup type:', pageInArray.pdfData ? pageInArray.pdfData.constructor.name : 'none');
+        console.log('- pages array isModified:', pageInArray.isModified);
+      }
+      
+      // Regenerate preview with the updated PDF
+      await this.regeneratePagePreview(this.currentPage);
+      
+      // Exit edit mode
+      this.exitEditMode();
+      
+      // Show success message
+      this.hideLoading();
+      console.log('=== SAVE EDITED PAGE SUCCESS ===');
+      console.log('Page saved successfully');
+      this.showToast('Page saved successfully!', 'success');
+      
+    } catch (error) {
+      this.hideLoading();
+      console.error('=== SAVE EDITED PAGE FAILED ===');
+      console.error('Failed to save edited page:', error);
+      console.error('Error details:', error.message);
+      console.error('Current page state:', this.currentPage);
+      this.showToast(`Failed to save page: ${error.message}`, 'error');
+    }
+  }
+
+  async regeneratePagePreview(page) {
+    try {
+      console.log('Regenerating preview for page:', page.id);
+      console.log('Page has pdfData:', !!page.pdfData);
+      console.log('PDF data size:', page.pdfData ? page.pdfData.length : 0);
+      
+      // Find the page card and update its preview
+      const pageCards = document.querySelectorAll('.page-card');
+      console.log('Found page cards:', pageCards.length);
+      
+      let cardFound = false;
+      for (const card of pageCards) {
+        console.log('Checking card with pageId:', card.dataset.pageId, 'vs target:', page.id);
+        if (card.dataset.pageId === page.id) {
+          cardFound = true;
+          console.log('Found matching page card');
+          
+          const previewDiv = card.querySelector('.page-preview');
+          if (previewDiv) {
+            // Validate we have the necessary data
+            if (!page.pdfJSDoc) {
+              console.error('❌ Missing pdfJSDoc for page:', page.id);
+              previewDiv.innerHTML = '<div class="page-placeholder">📄<br>No PDF data</div>';
+              return;
+            }
+            
+            console.log('Updating preview with new PDF data...');
+            console.log('PDF document info:', {
+              numPages: page.pdfJSDoc.numPages,
+              isModified: page.isModified,
+              originalFilePageIndex: page.filePageIndex
+            });
+            
+            // Add loading indicator
+            previewDiv.innerHTML = '<div class="updating-preview">🔄 Updating...</div>';
+            
+            // Small delay to show the loading indicator
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Re-render the preview with updated data
+            // For edited pages, use index 0 since they become single-page PDFs
+            const pageIndexToRender = page.isModified ? 0 : page.filePageIndex;
+            console.log('Rendering page with index:', pageIndexToRender, '(isModified:', page.isModified, ')');
+            
+            await this.renderPageToDiv(page.pdfJSDoc, pageIndexToRender, previewDiv);
+            
+            // Add visual indicator that page was edited
+            card.classList.add('page-edited');
+            
+            console.log('Page preview regenerated successfully');
+          } else {
+            console.error('Missing preview div for page:', page.id);
+          }
+          break;
+        }
+      }
+      
+      if (!cardFound) {
+        console.error('Could not find page card with ID:', page.id);
+      }
+      
+    } catch (error) {
+      console.error('Failed to regenerate page preview:', error);
+    }
+  }
+
+  exitEditMode(overlay = null) {
+    console.log('Exiting edit mode...');
+    
+    // Remove toolbar from body
+    const toolbar = document.querySelector('.editor-toolbar');
+    if (toolbar) {
+      document.body.removeChild(toolbar);
+      console.log('Toolbar removed');
+    }
+    
+    if (overlay) {
+      document.body.removeChild(overlay);
+      console.log('Overlay removed');
+    } else {
+      // Find and remove the overlay
+      const existingOverlay = document.querySelector('.page-fullscreen-overlay');
+      if (existingOverlay) {
+        document.body.removeChild(existingOverlay);
+        console.log('Existing overlay removed');
+      }
+    }
+    
+    // Clean up editing state
+    this.editMode = 'view';
+    this.textAnnotations = [];
+    this.wipeAnnotations = [];
+    this.actionHistory = [];
+    this.currentPage = null;
+    
+    // Make sure the main modal is still visible
+    const modal = document.getElementById('page-preview-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      console.log('Main modal restored');
+    }
+    
+    console.log('Edit mode exited successfully');
   }
 
   bindPageCardEvents() {
@@ -530,6 +1562,27 @@ class EnhancedPDFProcessor {
     console.log(`Moved page from position ${fromIndex} to ${toIndex}`);
   }
 
+  movePageToPosition(draggedIndex, insertIndex) {
+    if (draggedIndex === insertIndex) return;
+    
+    // Adjust insert index if dragging from before the insert position
+    let targetIndex = insertIndex;
+    if (draggedIndex < insertIndex) {
+      targetIndex = insertIndex - 1;
+    }
+    
+    const movedPage = this.pages.splice(draggedIndex, 1)[0];
+    this.pages.splice(targetIndex, 0, movedPage);
+    
+    // Update global page numbers
+    this.pages.forEach((page, index) => {
+      page.globalPageNumber = index + 1;
+    });
+    
+    console.log(`Moved page from position ${draggedIndex} to insert position ${insertIndex} (actual position ${targetIndex})`);
+    this.renderPagePreviews(); // Re-render to update positions
+  }
+
   removePage(index) {
     if (index >= 0 && index < this.pages.length) {
       const removedPage = this.pages.splice(index, 1)[0];
@@ -556,6 +1609,35 @@ class EnhancedPDFProcessor {
     }
 
     console.log(`🔄 Starting merge process with ${this.pages.length} pages`);
+    console.log('Pages to merge:', this.pages.map(p => ({ id: p.id, isModified: p.isModified, fileName: p.fileName })));
+    
+    // Pre-merge data integrity check
+    console.log('=== PRE-MERGE DATA INTEGRITY CHECK ===');
+    for (let i = 0; i < this.pages.length; i++) {
+      const page = this.pages[i];
+      console.log(`Page ${i + 1}: ${page.id}`);
+      console.log('- isModified:', page.isModified);
+      console.log('- hasPdfData:', !!page.pdfData);
+      console.log('- pdfDataType:', page.pdfData ? page.pdfData.constructor.name : 'none');
+      console.log('- pdfDataSize:', page.pdfData ? page.pdfData.length : 0);
+      
+      if (page.isModified && (!page.pdfData || page.pdfData.length === 0)) {
+        console.error('❌ CRITICAL: Modified page missing PDF data before merge!');
+        console.error('Page details:', page);
+      }
+    }
+    console.log('=== END PRE-MERGE CHECK ===');
+    
+    // Disable the button to prevent multiple clicks
+    if (this.elements.completeMergeBtn) {
+      this.elements.completeMergeBtn.disabled = true;
+      this.elements.completeMergeBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M12 2v20m0-20l4 4m-4-4L8 6"></path>
+        </svg>
+        Merging...
+      `;
+    }
     
     this.closePagePreviewModal();
     this.showLoading('Merging PDF pages...');
@@ -565,9 +1647,110 @@ class EnhancedPDFProcessor {
       const mergedPdf = await pdfLib.PDFDocument.create();
 
       // Add pages in the order they appear in the modal
-      for (const page of this.pages) {
-        const [copiedPage] = await mergedPdf.copyPages(page.pdfDoc, [page.filePageIndex]);
-        mergedPdf.addPage(copiedPage);
+      for (let i = 0; i < this.pages.length; i++) {
+        const page = this.pages[i];
+        console.log(`Processing page ${i + 1}/${this.pages.length}: ${page.fileName} (modified: ${page.isModified})`);
+        console.log('Page debug info:', {
+          id: page.id,
+          isModified: page.isModified,
+          hasPdfData: !!page.pdfData,
+          pdfDataType: typeof page.pdfData,
+          pdfDataSize: page.pdfData ? page.pdfData.length : 0,
+          pdfDataConstructor: page.pdfData ? page.pdfData.constructor.name : 'none',
+          hasPdfDoc: !!page.pdfDoc,
+          filePageIndex: page.filePageIndex
+        });
+        
+        // Additional debugging for pdfData
+        if (page.isModified) {
+          console.log('Detailed pdfData analysis:');
+          console.log('- pdfData is null:', page.pdfData === null);
+          console.log('- pdfData is undefined:', page.pdfData === undefined);
+          console.log('- pdfData is array:', Array.isArray(page.pdfData));
+          console.log('- pdfData length > 0:', page.pdfData && page.pdfData.length > 0);
+          
+          if (page.pdfData) {
+            // Create a copy to avoid detached buffer issues
+            const dataCopy = new Uint8Array(page.pdfData);
+            console.log('- First 20 bytes:', Array.from(dataCopy.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+          }
+        }
+        
+        let sourcePdf;
+        
+        if (page.isModified) {
+          console.log('Processing modified page:', page.id);
+          
+          // Check if we have valid PDF data
+          const hasValidPdfData = page.pdfData && 
+                                 (page.pdfData instanceof Uint8Array || Array.isArray(page.pdfData)) && 
+                                 page.pdfData.length > 0;
+          
+          console.log('PDF data validation:', {
+            exists: !!page.pdfData,
+            isUint8Array: page.pdfData instanceof Uint8Array,
+            isArray: Array.isArray(page.pdfData),
+            hasLength: page.pdfData && page.pdfData.length > 0,
+            isValid: hasValidPdfData
+          });
+          
+          if (hasValidPdfData) {
+            // Use the edited PDF data for modified pages
+            console.log('✅ Using edited PDF data for page:', page.id);
+            console.log('PDF data size:', page.pdfData.length, 'bytes');
+            
+            try {
+              // Pass a copy of the data to prevent detached buffer issues
+              const dataCopy = new Uint8Array(page.pdfData);
+              sourcePdf = await pdfLib.PDFDocument.load(dataCopy);
+              console.log('✅ Edited PDF loaded successfully, pages:', sourcePdf.getPageCount());
+              
+              // For edited pages, we want the first (and only) page since we saved it as a single page
+              const [copiedPage] = await mergedPdf.copyPages(sourcePdf, [0]);
+              mergedPdf.addPage(copiedPage);
+            } catch (loadError) {
+              console.error('❌ Failed to load edited PDF data:', loadError);
+              if (page.pdfData) {
+                console.error('PDF data preview (first 100 bytes):', Array.from(new Uint8Array(page.pdfData).slice(0, 100)));
+              }
+              throw new Error(`Failed to load edited PDF for page ${page.id}: ${loadError.message}`);
+            }
+          } else {
+            console.error('❌ Invalid or missing PDF data for modified page:', page.id);
+            
+            // Try to recover from pages array backup
+            const pageBackup = this.pages.find(p => p.id === page.id);
+            if (pageBackup && pageBackup.pdfData && pageBackup.pdfData.length > 0) {
+              console.log('🔄 Attempting to recover PDF data from backup...');
+              page.pdfData = pageBackup.pdfData;
+              console.log('✅ PDF data recovered from backup, size:', page.pdfData.length);
+              
+              // Retry the edited page process
+              try {
+                const dataCopy = new Uint8Array(page.pdfData);
+                sourcePdf = await pdfLib.PDFDocument.load(dataCopy);
+                console.log('✅ Recovered PDF loaded successfully, pages:', sourcePdf.getPageCount());
+                
+                const [copiedPage] = await mergedPdf.copyPages(sourcePdf, [0]);
+                mergedPdf.addPage(copiedPage);
+              } catch (recoveryError) {
+                console.error('❌ Failed to load recovered PDF data:', recoveryError);
+                throw new Error(`Failed to recover PDF data for page ${page.id}: ${recoveryError.message}`);
+              }
+            } else {
+              console.error('❌ No backup data available for page:', page.id);
+              throw new Error(`Modified page ${page.id} is missing PDF data and no backup found. Please re-edit and save the page.`);
+            }
+          }
+        } else {
+          // Use original PDF document for unmodified pages
+          console.log('Using original PDF data for page:', page.id);
+          const [copiedPage] = await mergedPdf.copyPages(page.pdfDoc, [page.filePageIndex]);
+          mergedPdf.addPage(copiedPage);
+        }
+        
+        // Update progress
+        this.updateLoadingMessage(`Processing page ${i + 1} of ${this.pages.length}...`);
       }
 
       this.updateLoadingMessage('Finalizing document...');
@@ -575,7 +1758,7 @@ class EnhancedPDFProcessor {
       
       this.hideLoading();
       this.showDownloadSection();
-      this.showStatus('✅ Merge completed successfully!', 'success');
+      this.showStatus('✅ Merge completed successfully! Your edits have been included.', 'success');
       
       console.log('✅ PDF merge completed successfully');
 
@@ -583,6 +1766,17 @@ class EnhancedPDFProcessor {
       console.error('❌ Merge failed:', error);
       this.hideLoading();
       this.showStatus(`Merge failed: ${error.message}`, 'error');
+      
+      // Re-enable the button on error
+      if (this.elements.completeMergeBtn) {
+        this.elements.completeMergeBtn.disabled = false;
+        this.elements.completeMergeBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M20 6L9 17l-5-5"></path>
+          </svg>
+          Complete Merge
+        `;
+      }
     }
   }
 
