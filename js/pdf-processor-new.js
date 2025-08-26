@@ -2366,26 +2366,20 @@ class EnhancedPDFProcessor {
         finalPdfData = await this.compressPdf(this.mergedPdfData, compressionLevel);
       }
 
-      // Create download link
-      const blob = new Blob([finalPdfData], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
       const filename = `merged-pdf-${timestamp}.pdf`;
-      
-      // Create and trigger download
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      
-      // Clean up
-      URL.revokeObjectURL(url);
-      
+
       this.hideLoading();
+
+      // Try modern download approach first
+      if (this.tryModernDownload(finalPdfData, filename)) {
+        this.showStatus(`PDF downloaded successfully as ${filename}`, 'success');
+        return;
+      }
+
+      // Fallback to traditional method
+      this.tryTraditionalDownload(finalPdfData, filename);
       this.showStatus(`PDF downloaded successfully as ${filename}`, 'success');
       
     } catch (error) {
@@ -2393,6 +2387,64 @@ class EnhancedPDFProcessor {
       this.hideLoading();
       this.showStatus(`Download failed: ${error.message}`, 'error');
     }
+  }
+
+  tryModernDownload(pdfData, filename) {
+    // Use the File System Access API if available (Chrome 86+)
+    if ('showSaveFilePicker' in window) {
+      this.showModernSaveDialog(pdfData, filename);
+      return true;
+    }
+    return false;
+  }
+
+  async showModernSaveDialog(pdfData, filename) {
+    try {
+      const fileHandle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{
+          description: 'PDF files',
+          accept: { 'application/pdf': ['.pdf'] }
+        }]
+      });
+
+      const writable = await fileHandle.createWritable();
+      await writable.write(pdfData);
+      await writable.close();
+      
+      this.showStatus('PDF saved successfully!', 'success');
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('Modern save failed:', error);
+        // Fall back to traditional download
+        this.tryTraditionalDownload(pdfData, filename);
+      }
+    }
+  }
+
+  tryTraditionalDownload(pdfData, filename) {
+    // Create download link
+    const blob = new Blob([pdfData], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create and trigger download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    
+    // Add user instruction for permission
+    this.showStatus('Click "Allow" if your browser asks for download permission', 'info');
+    
+    // Trigger download
+    a.click();
+    
+    // Clean up after a delay
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
   }
 
   async compressPdf(pdfData, compressionLevel) {

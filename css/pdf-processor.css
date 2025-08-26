@@ -1693,3 +1693,19 @@ input:focus,
   font-size: inherit;
   color: inherit;
 }
+
+/* Download section styling */
+.download-info {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.download-info small {
+  color: #666;
+  font-style: italic;
+  display: block;
+  padding: 8px;
+  background: rgba(0, 120, 212, 0.1);
+  border-radius: 4px;
+  border-left: 3px solid #0078d4;
+}
