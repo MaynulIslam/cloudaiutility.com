@@ -38,6 +38,7 @@ npm install
 ```
 
 ## Running the Server
+http://localhost:8000/index.html
 
 ### Development Mode
 ```bash
