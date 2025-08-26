@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>eSign & Request Signatures - Utility App</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/esign-processor.css">
+  <link rel="stylesheet" href="../css/wipe-style.css">
+</head>
+<body>
+  <!-- Site Header Navigation -->
+  <header>
+    <a href="../index.html" class="site-logo cherry-bomb-one-regular">Cloud AI Utility.com</a>
+    <nav class="header-nav">
+      <a href="#pro" class="nav-link cherry-bomb-one-regular">Pro</a>
+      <a href="#signup" class="nav-link cherry-bomb-one-regular">Sign up</a>
+      <a href="#signin" class="nav-link cherry-bomb-one-regular">Sign in</a>
+    </nav>
+  </header>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <div class="container">
+    <div class="page-header">
+      <h1 class="page-title">eSign & Request Signatures</h1>
+      <p class="page-description">Upload documents, add signature fields, and request signatures from others</p>
+    </div>
+
+    <main>
+      <div class="esign-processor">
+        <!-- Upload Section -->
+        <section class="upload-section">
+          <div class="upload-header">
+            <h2>Upload Document</h2>
+            <div id="file-tags" class="file-tags"></div>
+          </div>
+          <div id="drop-area" class="drop-area" tabindex="0" aria-label="Drop PDF files here or click to select">
+            <div class="drop-content">
+              <div class="file-display">
+                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14,2 14,8 20,8"></polyline>
+                  <line x1="12" y1="13" x2="8" y2="13"></line>
+                  <line x1="12" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10,9 9,9 8,9"></polyline>
+                </svg>
+                <div id="file-info" class="file-info">No document selected</div>
+              </div>
+              <p>Drop PDF document here, or <span id="browse-btn" class="browse-link">browse</span></p>
+              <small>Max 50MB • PDF format only • Single document</small>
+            </div>
+            <input id="file-input" type="file" accept="application/pdf" hidden>
+          </div>
+          <div class="upload-footer">
+            <button id="prepare-document-btn" class="merge-button" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+              </svg>
+              Prepare for Signing
+            </button>
+          </div>
+        </section>
+
+        <!-- Signature Configuration Section -->
+        <section class="signature-config-section" id="signature-config-section" style="display: none;">
+          <h2>Configure Signatures</h2>
+          <div class="config-content">
+            <div class="signer-management">
+              <h3>Add Signers</h3>
+              <div class="signer-form">
+                <div class="form-row">
+                  <input type="text" id="signer-name" placeholder="Signer Name" class="form-input">
+                  <input type="email" id="signer-email" placeholder="Email Address" class="form-input">
+                  <button id="add-signer-btn" class="add-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="16"></line>
+                      <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    Add Signer
+                  </button>
+                </div>
+              </div>
+              <div id="signers-list" class="signers-list"></div>
+            </div>
+          </div>
+          
+          <div class="config-footer">
+            <button id="add-signature-fields-btn" class="primary-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+              </svg>
+              Add Sign
+            </button>
+          </div>
+        </section>
+
+        <!-- Send for Signature Section -->
+        <section class="send-section" id="send-section" style="display: none;">
+          <h2>Send for Signature</h2>
+          <div class="send-content">
+            <div class="message-section">
+              <h3>Message to Signers</h3>
+              <textarea id="signature-message" placeholder="Optional message to include with the signature request..." class="message-textarea"></textarea>
+            </div>
+            
+            <div class="send-summary">
+              <h3>Summary</h3>
+              <div id="send-summary-content" class="summary-content">
+                <!-- Summary content will be populated here -->
+              </div>
+            </div>
+            
+            <button id="send-for-signature-btn" class="download-button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                <path d="M16 6l-4-4-4 4"></path>
+                <line x1="12" y1="2" x2="12" y2="12"></line>
+              </svg>
+              Send for Signature
+            </button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Document Preview Modal -->
+    <div id="document-preview-modal" class="modal" style="display: none;">
+      <div class="modal-content signature-modal">
+        <div class="modal-header">
+          <div class="modal-title-section">
+            <h2>Add Signature Fields</h2>
+            <div class="field-toolbar">
+              <button id="add-signature-field" class="toolbar-btn active" data-field-type="signature">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                </svg>
+                Signature
+              </button>
+              <button id="add-date-field" class="toolbar-btn" data-field-type="date">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                Date
+              </button>
+              <button id="add-text-field" class="toolbar-btn" data-field-type="text">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14,2 14,8 20,8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                Text
+              </button>
+            </div>
+            <div class="zoom-controls">
+              <button id="zoom-out-btn" class="zoom-btn" title="Zoom Out">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="M21 21l-4.35-4.35"></path>
+                  <line x1="8" y1="11" x2="14" y2="11"></line>
+                </svg>
+              </button>
+              <span id="zoom-level" class="zoom-level">100%</span>
+              <button id="zoom-in-btn" class="zoom-btn" title="Zoom In">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="M21 21l-4.35-4.35"></path>
+                  <line x1="11" y1="8" x2="11" y2="14"></line>
+                  <line x1="8" y1="11" x2="14" y2="11"></line>
+                </svg>
+              </button>
+              <button id="zoom-fit-btn" class="zoom-btn" title="Fit to Window">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <button id="close-modal" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="preview-info">
+            <p>Click on any page to place signature fields. Scroll to view all pages. Drag fields to reposition them.</p>
+            <div class="current-signer">
+              <label for="field-signer-select">Assign field to:</label>
+              <select id="field-signer-select" class="signer-select">
+                <option value="">Select signer...</option>
+              </select>
+            </div>
+          </div>
+          <div id="document-pages-container" class="document-pages-container">
+            <!-- All PDF pages will be rendered here -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="complete-setup-btn" class="primary-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M20 6L9 17l-5-5"></path>
+            </svg>
+            Complete Setup
+          </button>
+        </div>
+      </div>
+    </div>    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <h3>Processing...</h3>
+        <p id="loading-message">Preparing document for signing...</p>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>&copy; 2025 Utility App</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script>
+    // Configure PDF.js worker when it's loaded
+    function configurePDFJS() {
+      if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        console.log('✅ PDF.js configured successfully');
+      } else {
+        console.log('⏳ Waiting for PDF.js to load...');
+        setTimeout(configurePDFJS, 100);
+      }
+    }
+    configurePDFJS();
+  </script>
+  <script src="../js/esign-processor.js" type="module"></script>
+</body>
+</html>
