@@ -6,6 +6,7 @@
   <title>eSign & Request Signatures - Utility App</title>
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/esign-processor.css">
+  <link rel="stylesheet" href="../css/esign-sign-tools.css">
   <link rel="stylesheet" href="../css/wipe-style.css">
 </head>
 <body>
@@ -63,66 +64,7 @@
           </div>
         </section>
 
-        <!-- Signature Configuration Section -->
-        <section class="signature-config-section" id="signature-config-section" style="display: none;">
-          <h2>Configure Signatures</h2>
-          <div class="config-content">
-            <div class="signer-management">
-              <h3>Add Signers</h3>
-              <div class="signer-form">
-                <div class="form-row">
-                  <input type="text" id="signer-name" placeholder="Signer Name" class="form-input">
-                  <input type="email" id="signer-email" placeholder="Email Address" class="form-input">
-                  <button id="add-signer-btn" class="add-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="8" x2="12" y2="16"></line>
-                      <line x1="8" y1="12" x2="16" y2="12"></line>
-                    </svg>
-                    Add Signer
-                  </button>
-                </div>
-              </div>
-              <div id="signers-list" class="signers-list"></div>
-            </div>
-          </div>
-          
-          <div class="config-footer">
-            <button id="add-signature-fields-btn" class="primary-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-              </svg>
-              Add Sign
-            </button>
-          </div>
-        </section>
-
-        <!-- Send for Signature Section -->
-        <section class="send-section" id="send-section" style="display: none;">
-          <h2>Send for Signature</h2>
-          <div class="send-content">
-            <div class="message-section">
-              <h3>Message to Signers</h3>
-              <textarea id="signature-message" placeholder="Optional message to include with the signature request..." class="message-textarea"></textarea>
-            </div>
-            
-            <div class="send-summary">
-              <h3>Summary</h3>
-              <div id="send-summary-content" class="summary-content">
-                <!-- Summary content will be populated here -->
-              </div>
-            </div>
-            
-            <button id="send-for-signature-btn" class="download-button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
-                <path d="M16 6l-4-4-4 4"></path>
-                <line x1="12" y1="2" x2="12" y2="12"></line>
-              </svg>
-              Send for Signature
-            </button>
-          </div>
-        </section>
+  <!-- Configure Signatures section removed per request -->
       </div>
     </main>
 
@@ -131,31 +73,51 @@
       <div class="modal-content signature-modal">
         <div class="modal-header">
           <div class="modal-title-section">
-            <h2>Add Signature Fields</h2>
+            <h2>Place Signatures</h2>
             <div class="field-toolbar">
-              <button id="add-signature-field" class="toolbar-btn active" data-field-type="signature">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                </svg>
-                Signature
+              <div class="dropdown-container">
+                <button id="add-signature-field" class="toolbar-btn dropdown-btn" data-field-type="signature">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                  </svg>
+                  Add Sign
+                  <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="6,9 12,15 18,9"></polyline>
+                  </svg>
+                </button>
+                <div id="sign-dropdown" class="sign-dropdown" style="display: none;">
+                  <div class="sign-row">
+                    <label>1</label>
+                    <input class="sign-input" id="sign-input-1" placeholder="Sign 1 text">
+                    <button class="choose-sign-btn" data-index="1">Use</button>
+                  </div>
+                  <div class="sign-row">
+                    <label>2</label>
+                    <input class="sign-input" id="sign-input-2" placeholder="Sign 2 text">
+                    <button class="choose-sign-btn" data-index="2">Use</button>
+                  </div>
+                  <div class="sign-row">
+                    <label>3</label>
+                    <input class="sign-input" id="sign-input-3" placeholder="Sign 3 text">
+                    <button class="choose-sign-btn" data-index="3">Use</button>
+                  </div>
+                  <div class="sign-row">
+                    <label>4</label>
+                    <input class="sign-input" id="sign-input-4" placeholder="Sign 4 text">
+                    <button class="choose-sign-btn" data-index="4">Use</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="sign-in-use">
+              <div id="current-sign-display" class="current-sign-display">Sign in use: <span id="current-sign-value">None</span></div>
+            </div>
+            <div class="page-nav">
+              <button id="prev-page-btn" class="nav-btn" title="Previous Page">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"></polyline></svg>
               </button>
-              <button id="add-date-field" class="toolbar-btn" data-field-type="date">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-                Date
-              </button>
-              <button id="add-text-field" class="toolbar-btn" data-field-type="text">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14,2 14,8 20,8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                </svg>
-                Text
+              <button id="next-page-btn" class="nav-btn" title="Next Page">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"></polyline></svg>
               </button>
             </div>
             <div class="zoom-controls">
@@ -186,24 +148,27 @@
         </div>
         <div class="modal-body">
           <div class="preview-info">
-            <p>Click on any page to place signature fields. Scroll to view all pages. Drag fields to reposition them.</p>
-            <div class="current-signer">
-              <label for="field-signer-select">Assign field to:</label>
-              <select id="field-signer-select" class="signer-select">
-                <option value="">Select signer...</option>
-              </select>
-            </div>
+            <p>Click on any page to place signatures. Scroll to view all pages.</p>
           </div>
           <div id="document-pages-container" class="document-pages-container">
             <!-- All PDF pages will be rendered here -->
           </div>
+          <!-- Side page navigation arrows (left/right) -->
+          <button id="side-prev-btn" class="side-nav-btn left" aria-label="Previous page" title="Previous page">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <button id="side-next-btn" class="side-nav-btn right" aria-label="Next page" title="Next page">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
         </div>
         <div class="modal-footer">
           <button id="complete-setup-btn" class="primary-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M20 6L9 17l-5-5"></path>
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17,21 17,13 7,13 7,21"></polyline>
+              <polyline points="7,3 7,8 15,8"></polyline>
             </svg>
-            Complete Setup
+            Save
           </button>
         </div>
       </div>
@@ -235,6 +200,6 @@
     }
     configurePDFJS();
   </script>
-  <script src="../js/esign-processor.js" type="module"></script>
+  <script src="../js/esign-processor.js?v=95659A82"></script>
 </body>
 </html>

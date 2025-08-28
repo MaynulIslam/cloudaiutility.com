@@ -1,0 +1,200 @@
+/* Styles for sign selection dropdown and display */
+.modal-title-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.field-toolbar {
+  margin-left: 2rem;
+}
+
+.dropdown-container {
+  position: relative;
+}
+
+.dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.dropdown-arrow {
+  width: 16px;
+  height: 16px;
+}
+
+.sign-in-use {
+  margin-left: auto;
+}
+
+.current-sign-display {
+  font-size: 0.95rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.sign-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  background: white;
+  border: 1px solid #ddd;
+  padding: 0.5rem;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 1001;
+  min-width: 280px;
+}
+
+.sign-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.sign-row:last-child {
+  margin-bottom: 0;
+}
+
+.sign-row label {
+  width: 18px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.sign-input {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.sign-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(38, 105, 105, 0.2);
+}
+
+.choose-sign-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.choose-sign-btn:hover {
+  background: var(--accent-strong);
+}
+
+/* Modal page container adjustments for single page view */
+.document-pages-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 60vh; /* leave room for header/footer */
+  overflow: auto;
+}
+
+.document-pages-container { position: relative; }
+
+.pdf-page-wrapper.single-page {
+  position: relative;
+  display: inline-block;
+  background: #f7f7f7;
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* Page enter slide animations */
+.page-enter.from-right {
+  animation: slideFromRight 320ms ease both;
+}
+.page-enter.from-left {
+  animation: slideFromLeft 320ms ease both;
+}
+
+@keyframes slideFromRight {
+  from { transform: translateX(30%) scale(0.98); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+@keyframes slideFromLeft {
+  from { transform: translateX(-30%) scale(0.98); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+.pdf-page-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.page-signature-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none; /* children will enable pointer events when needed */
+}
+
+.pdf-page-wrapper .signature-field {
+  pointer-events: auto; /* allow dragging and clicking */
+}
+
+.signature-textarea {
+  font-family: var(--ui-font, Arial, sans-serif);
+  color: #111;
+  background: rgba(255,255,255,0.9);
+  border: 1px dashed #888;
+  border-radius: 4px;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  min-width: 80px;
+  min-height: 28px;
+  max-width: 90%;
+  max-height: 60%;
+  overflow: auto;
+}
+
+
+/* Side navigation arrows shown on left/right of the page preview */
+.side-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(0,0,0,0.55);
+}
+.side-nav-btn svg {
+  width: 34px;
+  height: 34px;
+  stroke: rgba(0,0,0,0.55);
+}
+.side-nav-btn.left { pointer-events: auto; }
+.side-nav-btn.right { pointer-events: auto; }
+.side-nav-btn:hover { color: rgba(0,0,0,0.85); }
+.side-nav-btn:hover svg { stroke: rgba(0,0,0,0.85); }

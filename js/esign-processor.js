@@ -12,6 +12,7 @@ class ESignProcessor {
         this.minScale = 0.5;
         this.maxScale = 3.0;
         this.scaleStep = 0.2;
+    this.pageDirection = null; // 'from-right' or 'from-left' for animation
         
         this.initializeElements();
         this.setupEventListeners();
@@ -43,8 +44,12 @@ class ESignProcessor {
         this.modal = document.getElementById('document-preview-modal');
         this.closeModalBtn = document.getElementById('close-modal');
         this.documentPagesContainer = document.getElementById('document-pages-container');
-        this.fieldSignerSelect = document.getElementById('field-signer-select');
+    this.fieldSignerSelect = document.getElementById('field-signer-select');
         this.completeSetupBtn = document.getElementById('complete-setup-btn');
+    // Sign tool elements
+    this.signDropdown = document.getElementById('sign-dropdown');
+    this.currentSignValue = document.getElementById('current-sign-value');
+    this.signToggleBtn = document.getElementById('add-signature-field');
         
         // Zoom control elements
         this.zoomInBtn = document.getElementById('zoom-in-btn');
@@ -54,51 +59,116 @@ class ESignProcessor {
         
         // Toolbar elements
         this.toolbarBtns = document.querySelectorAll('.toolbar-btn');
+
+    // Internal state for selected sign text
+    this.selectedSignIndex = null;
+    this.selectedSignText = null;
         
         // Other elements
         this.loadingOverlay = document.getElementById('loading-overlay');
         this.loadingMessage = document.getElementById('loading-message');
         this.toastContainer = document.getElementById('toast-container');
+    // Page navigation controls inside modal
+    this.prevPageBtn = document.getElementById('prev-page-btn');
+    this.nextPageBtn = document.getElementById('next-page-btn');
+    // bottom nav buttons (large red arrows)
+    this.sidePrevBtn = document.getElementById('side-prev-btn');
+    this.sideNextBtn = document.getElementById('side-next-btn');
     }
 
     setupEventListeners() {
         // File upload events
-        this.dropArea.addEventListener('click', () => this.fileInput.click());
-        this.browseBtn.addEventListener('click', (e) => {
+        if (this.dropArea) this.dropArea.addEventListener('click', () => this.fileInput.click());
+        if (this.browseBtn) this.browseBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.fileInput.click();
+            if (this.fileInput) this.fileInput.click();
         });
-        this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        if (this.fileInput) this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
         
         // Drag and drop events
-        this.dropArea.addEventListener('dragover', (e) => this.handleDragOver(e));
-        this.dropArea.addEventListener('dragleave', (e) => this.handleDragLeave(e));
-        this.dropArea.addEventListener('drop', (e) => this.handleDrop(e));
+        if (this.dropArea) {
+            this.dropArea.addEventListener('dragover', (e) => this.handleDragOver(e));
+            this.dropArea.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+            this.dropArea.addEventListener('drop', (e) => this.handleDrop(e));
+        }
         
         // Button events
-        this.prepareBtn.addEventListener('click', () => this.prepareDocument());
-        this.addSignerBtn.addEventListener('click', () => this.addSigner());
-        this.addFieldsBtn.addEventListener('click', () => this.openDocumentPreview());
-        this.sendBtn.addEventListener('click', () => this.sendForSignature());
+        if (this.prepareBtn) this.prepareBtn.addEventListener('click', () => this.prepareDocument());
+        // Removed signer and fields buttons as they no longer exist in simplified flow
+        if (this.sendBtn) this.sendBtn.addEventListener('click', () => this.sendForSignature());
         
         // Modal events
-        this.closeModalBtn.addEventListener('click', () => this.closeModal());
-        this.completeSetupBtn.addEventListener('click', () => this.completeSetup());
+    if (this.closeModalBtn) this.closeModalBtn.addEventListener('click', () => this.closeModal());
+    if (this.completeSetupBtn) {
+        // When used inside modal, treat as Save: process and download the stamped PDF
+        this.completeSetupBtn.addEventListener('click', () => {
+            // If modal is visible, process and download; otherwise run original complete flow
+            if (this.modal && this.modal.style.display !== 'none') {
+                this.processAndDownload();
+            } else {
+                this.completeSetup();
+            }
+        });
+    }
         
         // Toolbar events
         this.toolbarBtns.forEach(btn => {
             btn.addEventListener('click', () => this.selectFieldType(btn.dataset.fieldType));
         });
+
+        // Sign dropdown toggle and choose handlers
+        if (this.signToggleBtn) {
+            this.signToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!this.signDropdown) return;
+                this.signDropdown.style.display = this.signDropdown.style.display === 'none' ? 'block' : 'none';
+            });
+        }
+
+        // Delegate choose sign buttons
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest && e.target.closest('.choose-sign-btn');
+            if (btn) {
+                const idx = btn.dataset.index;
+                const input = document.getElementById('sign-input-' + idx);
+                if (input) {
+                    this.selectedSignIndex = idx;
+                    this.selectedSignText = input.value || (`SIGN-${idx}`);
+                    if (this.currentSignValue) this.currentSignValue.textContent = this.selectedSignText;
+                    if (this.signDropdown) this.signDropdown.style.display = 'none';
+                }
+            } else {
+                // Click outside closes dropdown
+                if (this.signDropdown && !e.target.closest('.sign-dropdown')) {
+                    this.signDropdown.style.display = 'none';
+                }
+            }
+        });
         
         // Zoom control events
-        this.zoomInBtn.addEventListener('click', () => this.zoomIn());
-        this.zoomOutBtn.addEventListener('click', () => this.zoomOut());
-        this.zoomFitBtn.addEventListener('click', () => this.zoomToFit());
+    if (this.zoomInBtn) this.zoomInBtn.addEventListener('click', () => this.zoomIn());
+    if (this.zoomOutBtn) this.zoomOutBtn.addEventListener('click', () => this.zoomOut());
+    if (this.zoomFitBtn) this.zoomFitBtn.addEventListener('click', () => this.zoomToFit());
+    if (this.prevPageBtn) this.prevPageBtn.addEventListener('click', (e) => { e.stopPropagation(); this.prevPage(); });
+    if (this.nextPageBtn) this.nextPageBtn.addEventListener('click', (e) => { e.stopPropagation(); this.nextPage(); });
+    if (this.sidePrevBtn) this.sidePrevBtn.addEventListener('click', (e) => { e.stopPropagation(); this.prevPage(); });
+    if (this.sideNextBtn) this.sideNextBtn.addEventListener('click', (e) => { e.stopPropagation(); this.nextPage(); });
         
         // Keyboard events
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.modal.style.display !== 'none') {
                 this.closeModal();
+            }
+            // Keyboard left/right to navigate pages in modal
+            if (e.key === 'ArrowLeft' && this.modal && this.modal.style.display !== 'none') {
+                e.preventDefault();
+                this.pageDirection = 'from-left';
+                this.prevPage();
+            }
+            if (e.key === 'ArrowRight' && this.modal && this.modal.style.display !== 'none') {
+                e.preventDefault();
+                this.pageDirection = 'from-right';
+                this.nextPage();
             }
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === '=' || e.key === '+') {
@@ -115,17 +185,52 @@ class ESignProcessor {
         });
         
         // Signer input events
-        this.signerEmail.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.addSigner();
-            }
-        });
-        
-        this.signerName.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.addSigner();
-            }
-        });
+        if (this.signerEmail) {
+            this.signerEmail.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.addSigner();
+                }
+            });
+        }
+
+        if (this.signerName) {
+            this.signerName.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.addSigner();
+                }
+            });
+        }
+    }
+
+    goToPage(pageNum) {
+        if (!this.pdfDocument) return;
+        const numPages = this.pdfDocument.numPages;
+        if (pageNum < 1) pageNum = 1;
+        if (pageNum > numPages) pageNum = numPages;
+        this.currentPage = pageNum;
+        // Re-render current page
+        this.renderAllPages();
+    }
+
+    nextPage() {
+        if (!this.pdfDocument) return;
+        const numPages = this.pdfDocument.numPages;
+        if (this.currentPage < numPages) {
+            // animate as entering from right
+            if (!this.pageDirection) this.pageDirection = 'from-right';
+            this.currentPage += 1;
+            this.renderAllPages();
+        }
+    }
+
+    prevPage() {
+        if (!this.pdfDocument) return;
+        if (this.currentPage > 1) {
+            // animate as entering from left
+            if (!this.pageDirection) this.pageDirection = 'from-left';
+            this.currentPage -= 1;
+            this.renderAllPages();
+        }
     }
 
     // File handling methods
@@ -195,36 +300,43 @@ class ESignProcessor {
             this.showToast('Please upload a document first.', 'error');
             return;
         }
-        
-        this.configSection.style.display = 'block';
+        // Open the document preview modal immediately so user can place signatures
         this.prepareBtn.textContent = 'Document Prepared';
         this.prepareBtn.disabled = true;
-        
-        // Scroll to configuration section
-        this.configSection.scrollIntoView({ behavior: 'smooth' });
+
+        // Ensure PDF.js document is loaded (already loaded during file selection)
+        this.openDocumentPreview();
     }
 
     // Signer management methods
     addSigner() {
-        const name = this.signerName.value.trim();
-        const email = this.signerEmail.value.trim();
-        
-        if (!name || !email) {
-            this.showToast('Please enter both name and email.', 'error');
+        const name = (this.signerName && this.signerName.value) ? this.signerName.value.trim() : '';
+        // Email input was removed from the UI; accept empty email but still allow signer creation
+        const email = (this.signerEmail && this.signerEmail.value) ? this.signerEmail.value.trim() : '';
+
+        if (!name) {
+            this.showToast('Please enter the signer name.', 'error');
             return;
         }
-        
-        if (!this.isValidEmail(email)) {
+
+        if (email && !this.isValidEmail(email)) {
             this.showToast('Please enter a valid email address.', 'error');
             return;
         }
-        
-        // Check for duplicate emails
-        if (this.signers.some(signer => signer.email === email)) {
-            this.showToast('This email is already added.', 'error');
-            return;
+
+        // Check for duplicate names if no email provided
+        if (email) {
+            if (this.signers.some(signer => signer.email === email)) {
+                this.showToast('This email is already added.', 'error');
+                return;
+            }
+        } else {
+            if (this.signers.some(signer => signer.name === name)) {
+                this.showToast('This signer is already added.', 'error');
+                return;
+            }
         }
-        
+
         const signer = {
             id: Date.now(),
             name: name,
@@ -254,16 +366,18 @@ class ESignProcessor {
     }
 
     renderSignersList() {
+        // Guard against missing signers list element (removed in simplified flow)
+        if (!this.signersList) return;
+        
         if (this.signers.length === 0) {
             this.signersList.innerHTML = '<p style="color: var(--muted); text-align: center; margin: 1rem 0;">No signers added yet.</p>';
             return;
         }
-        
         this.signersList.innerHTML = this.signers.map(signer => `
             <div class="signer-item">
                 <div class="signer-info">
                     <div class="signer-name">${this.escapeHtml(signer.name)}</div>
-                    <div class="signer-email">${this.escapeHtml(signer.email)}</div>
+                    ${signer.email ? `<div class="signer-email">${this.escapeHtml(signer.email)}</div>` : ''}
                 </div>
                 <button class="remove-signer" onclick="eSignProcessor.removeSigner(${signer.id})">
                     Remove
@@ -273,20 +387,18 @@ class ESignProcessor {
     }
 
     updateSignerSelect() {
+        if (!this.fieldSignerSelect) return;
+
         const options = this.signers.map(signer => 
             `<option value="${signer.id}">${this.escapeHtml(signer.name)}</option>`
         ).join('');
-        
+
         this.fieldSignerSelect.innerHTML = '<option value="">Select signer...</option>' + options;
     }
 
     // Document preview and signature field methods
     async openDocumentPreview() {
-        if (this.signers.length === 0) {
-            this.showToast('Please add at least one signer first.', 'error');
-            return;
-        }
-        
+        // Allow opening preview regardless of signers — placement can be anonymous
         if (!this.pdfDocument) {
             this.showToast('Document not loaded. Please try uploading again.', 'error');
             return;
@@ -338,55 +450,138 @@ class ESignProcessor {
     }
 
     async renderAllPages() {
+        // Render only the current page inside the modal so user sees one page at a time
         if (!this.pdfDocument) return;
 
-        this.documentPagesContainer.innerHTML = '';
+    this.documentPagesContainer.innerHTML = '';
         const numPages = this.pdfDocument.numPages;
+        // ensure currentPage is within bounds
+        if (!this.currentPage || this.currentPage < 1) this.currentPage = 1;
+        if (this.currentPage > numPages) this.currentPage = numPages;
 
-        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-            const pageWrapper = document.createElement('div');
-            pageWrapper.className = 'pdf-page-wrapper';
-            pageWrapper.dataset.pageNumber = pageNum;
+        const pageNum = this.currentPage;
+        const pageWrapper = document.createElement('div');
+        pageWrapper.className = 'pdf-page-wrapper single-page';
+        pageWrapper.dataset.pageNumber = pageNum;
 
-            const pageNumber = document.createElement('div');
-            pageNumber.className = 'page-number';
-            pageNumber.textContent = `Page ${pageNum}`;
+        const pageNumber = document.createElement('div');
+        pageNumber.className = 'page-number';
+        pageNumber.textContent = `Page ${pageNum} of ${numPages}`;
 
-            const canvas = document.createElement('canvas');
-            canvas.className = 'pdf-page-canvas';
-            canvas.dataset.pageNumber = pageNum;
+        const canvas = document.createElement('canvas');
+        canvas.className = 'pdf-page-canvas';
+        canvas.dataset.pageNumber = pageNum;
 
-            const overlay = document.createElement('div');
-            overlay.className = 'page-signature-overlay';
-            overlay.dataset.pageNumber = pageNum;
+        const overlay = document.createElement('div');
+        overlay.className = 'page-signature-overlay';
+        overlay.dataset.pageNumber = pageNum;
 
-            pageWrapper.appendChild(pageNumber);
-            pageWrapper.appendChild(canvas);
-            pageWrapper.appendChild(overlay);
-            this.documentPagesContainer.appendChild(pageWrapper);
+    pageWrapper.appendChild(pageNumber);
+        pageWrapper.appendChild(canvas);
+        pageWrapper.appendChild(overlay);
+        this.documentPagesContainer.appendChild(pageWrapper);
 
-            // Render the PDF page
-            const page = await this.pdfDocument.getPage(pageNum);
-            const viewport = page.getViewport({ scale: this.scale });
-            
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            
-            const ctx = canvas.getContext('2d');
-            const renderContext = {
-                canvasContext: ctx,
-                viewport: viewport
-            };
-            
-            await page.render(renderContext).promise;
+        // Render the PDF page, but first compute fit-to-container scale
+        const page = await this.pdfDocument.getPage(pageNum);
 
-            // Add click handler for signature field placement
-            canvas.addEventListener('click', (event) => {
-                this.addSignatureField(event, pageNum, canvas, overlay);
-            });
+        // Get native page size using scale = 1 viewport
+        const unscaledViewport = page.getViewport({ scale: 1 });
+
+        // Compute available container size (subtract minor padding if present)
+        const containerRect = this.documentPagesContainer.getBoundingClientRect();
+        let availW = containerRect.width || 800; // fallback
+        let availH = containerRect.height || 600; // fallback
+
+        // Reserve some space for header/controls inside the wrapper
+        const header = pageWrapper.querySelector('.page-number');
+        if (header) {
+            const headerRect = header.getBoundingClientRect();
+            // If headerRect.width === 0 (not yet in flow), approximate 30px
+            const headerH = headerRect.height || 28;
+            availH = Math.max(50, availH - headerH - 12);
         }
 
-        this.renderSignatureFields();
+        // Compute fit scale to fit page inside available area
+        const scaleX = availW / unscaledViewport.width;
+        const scaleY = availH / unscaledViewport.height;
+        const fitScale = Math.max(this.minScale, Math.min(this.maxScale, Math.min(scaleX, scaleY) * 0.98));
+
+        // Apply computed scale
+        this.scale = fitScale || this.scale;
+
+        const viewport = page.getViewport({ scale: this.scale });
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
+    // set overlay dimensions to match the rendered canvas
+    overlay.style.position = 'absolute';
+    overlay.style.left = '0px';
+    overlay.style.top = '0px';
+    overlay.style.width = canvas.width + 'px';
+    overlay.style.height = canvas.height + 'px';
+    overlay.style.pointerEvents = 'none';
+
+        const ctx = canvas.getContext('2d');
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+        };
+
+        await page.render(renderContext).promise;
+
+        // Apply enter animation if pageDirection is set
+        if (this.pageDirection) {
+            pageWrapper.classList.add('page-enter', this.pageDirection);
+            // Remove animation classes after animation completes
+            pageWrapper.addEventListener('animationend', () => {
+                pageWrapper.classList.remove('page-enter', 'from-right', 'from-left');
+            }, { once: true });
+            // reset direction
+            this.pageDirection = null;
+        }
+
+        // Position side nav buttons (if present) immediately next to the canvas edges
+        try {
+            const prevBtn = this.sidePrevBtn || document.getElementById('side-prev-btn');
+            const nextBtn = this.sideNextBtn || document.getElementById('side-next-btn');
+            const containerRect = this.documentPagesContainer.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+
+            if (prevBtn) {
+                const btnW = prevBtn.offsetWidth || 44;
+                const btnH = prevBtn.offsetHeight || 44;
+                const leftPx = Math.max(4, canvasRect.left - containerRect.left - btnW - 8);
+                const topPx = Math.max(4, canvasRect.top - containerRect.top + (canvasRect.height - btnH) / 2);
+                prevBtn.style.position = 'absolute';
+                prevBtn.style.left = leftPx + 'px';
+                prevBtn.style.top = topPx + 'px';
+                prevBtn.style.display = 'inline-flex';
+                prevBtn.style.zIndex = '1200';
+            }
+
+            if (nextBtn) {
+                const btnW = nextBtn.offsetWidth || 44;
+                const btnH = nextBtn.offsetHeight || 44;
+                const leftPx = Math.min(containerRect.width - btnW - 4, canvasRect.left - containerRect.left + canvasRect.width + 8);
+                const topPx = Math.max(4, canvasRect.top - containerRect.top + (canvasRect.height - btnH) / 2);
+                nextBtn.style.position = 'absolute';
+                nextBtn.style.left = leftPx + 'px';
+                nextBtn.style.top = topPx + 'px';
+                nextBtn.style.display = 'inline-flex';
+                nextBtn.style.zIndex = '1200';
+            }
+        } catch (err) {
+            // ignore positioning errors
+            console.warn('Could not position side nav buttons:', err);
+        }
+
+        // Attach click handler to place signatures on this single page
+        canvas.addEventListener('click', (event) => {
+            this.addSignatureField(event, pageNum, canvas, overlay);
+        });
+
+    // Re-render signature fields that belong to this page
+    // ensure overlay is attached before rendering fields
+    setTimeout(() => this.renderSignatureFields(), 0);
     }
 
     selectFieldType(fieldType) {
@@ -397,38 +592,122 @@ class ESignProcessor {
     }
 
     addSignatureField(event, pageNumber, canvas, overlay) {
-        const selectedSignerId = this.fieldSignerSelect.value;
-        if (!selectedSignerId) {
-            this.showToast('Please select a signer for this field.', 'error');
-            return;
-        }
-        
+        // No longer require signer selection - place signatures anonymously
         const rect = canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
-        
-        // Store both absolute and relative coordinates for better precision
-        const field = {
-            id: Date.now(),
-            type: this.currentFieldType,
-            signerId: parseInt(selectedSignerId),
-            page: pageNumber,
-            x: x,
-            y: y,
-            width: 150,
-            height: 40,
-            // Store relative coordinates for zoom persistence
-            relativeX: x / canvas.width,
-            relativeY: y / canvas.height,
-            relativeWidth: 150 / canvas.width,
-            relativeHeight: 40 / canvas.height
+        // Create an editable, resizable textarea so user can edit text and resize to change size
+        overlay.style.pointerEvents = 'auto';
+
+        const textarea = document.createElement('textarea');
+        textarea.className = 'signature-textarea';
+        textarea.value = this.selectedSignText || '';
+        textarea.style.position = 'absolute';
+        textarea.style.left = x + 'px';
+        textarea.style.top = y + 'px';
+        textarea.style.width = '180px';
+        textarea.style.height = '48px';
+        textarea.style.fontSize = '20px';
+        textarea.style.resize = 'both';
+        textarea.style.padding = '6px 8px';
+        textarea.style.boxSizing = 'border-box';
+        textarea.style.zIndex = '2000';
+        textarea.setAttribute('placeholder', 'Type signature text and press Enter to place');
+        overlay.appendChild(textarea);
+        textarea.focus();
+
+        // Allow dragging of the textarea
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        textarea.addEventListener('mousedown', (e) => {
+            // If mousedown occurs on the resize handle, skip dragging (browser handles resize)
+            // Detect if near the bottom-right corner within 14px
+            const bounds = textarea.getBoundingClientRect();
+            if (e.clientX > bounds.right - 18 && e.clientY > bounds.bottom - 18) {
+                return; // allow resize
+            }
+            isDragging = true;
+            dragOffsetX = e.clientX - bounds.left;
+            dragOffsetY = e.clientY - bounds.top;
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const containerRect = canvas.getBoundingClientRect();
+            let newLeft = e.clientX - containerRect.left - dragOffsetX;
+            let newTop = e.clientY - containerRect.top - dragOffsetY;
+            // constrain inside canvas
+            newLeft = Math.max(0, Math.min(containerRect.width - textarea.offsetWidth, newLeft));
+            newTop = Math.max(0, Math.min(containerRect.height - textarea.offsetHeight, newTop));
+            textarea.style.left = newLeft + 'px';
+            textarea.style.top = newTop + 'px';
+        });
+
+        document.addEventListener('mouseup', () => { isDragging = false; });
+
+        // Update font size as user resizes the box (on mouseup and input)
+        const updateFontSizeFromBox = () => {
+            const h = textarea.clientHeight;
+            // map box height to font size (approx)
+            const fontSize = Math.max(10, Math.round(h * 0.35));
+            textarea.style.fontSize = fontSize + 'px';
         };
-        
-        this.signatureFields.push(field);
-        this.renderSignatureFields();
-        
-        const signer = this.signers.find(s => s.id === parseInt(selectedSignerId));
-        this.showToast(`${this.currentFieldType} field added for ${signer.name}.`, 'success');
+
+        textarea.addEventListener('input', () => {
+            updateFontSizeFromBox();
+        });
+        textarea.addEventListener('mouseup', () => {
+            updateFontSizeFromBox();
+        });
+
+        // Finalize placement on Enter
+        textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                const finalText = textarea.value.trim();
+                if (!finalText) {
+                    // if empty, just remove
+                    overlay.removeChild(textarea);
+                    overlay.style.pointerEvents = 'none';
+                    return;
+                }
+
+                // Create the field object and save
+                const rectNow = canvas.getBoundingClientRect();
+                const left = parseFloat(textarea.style.left);
+                const top = parseFloat(textarea.style.top);
+                const w = textarea.offsetWidth;
+                const h = textarea.offsetHeight;
+
+                const field = {
+                    id: Date.now(),
+                    type: 'signature',
+                    signerId: 1,
+                    signText: finalText,
+                    page: pageNumber,
+                    x: left,
+                    y: top,
+                    width: w,
+                    height: h,
+                    relativeX: left / canvas.width,
+                    relativeY: top / canvas.height,
+                    relativeWidth: w / canvas.width,
+                    relativeHeight: h / canvas.height
+                };
+
+                this.signatureFields.push(field);
+                // cleanup
+                if (textarea.parentNode) textarea.parentNode.removeChild(textarea);
+                overlay.style.pointerEvents = 'none';
+                this.renderSignatureFields();
+                this.showToast(`Signature placed on page ${pageNumber}`, 'success');
+            }
+        });
     }
 
     renderSignatureFields() {
@@ -457,11 +736,9 @@ class ESignProcessor {
             fieldElement.style.width = width + 'px';
             fieldElement.style.height = height + 'px';
             
-            const signer = this.signers.find(s => s.id === field.signerId);
-            
             const fieldLabel = document.createElement('div');
             fieldLabel.className = 'field-label';
-            fieldLabel.textContent = `${field.type.toUpperCase()} - ${signer.name}`;
+            fieldLabel.textContent = field.signText || 'SIGNATURE';
             
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-field';
@@ -510,9 +787,11 @@ class ESignProcessor {
         this.preserveSignatureFieldData();
         
         this.closeModal();
-        this.sendSection.style.display = 'block';
-        this.updateSendSummary();
-        this.sendSection.scrollIntoView({ behavior: 'smooth' });
+        if (this.sendSection) {
+            this.sendSection.style.display = 'block';
+            this.updateSendSummary();
+            this.sendSection.scrollIntoView({ behavior: 'smooth' });
+        }
     }
 
     preserveSignatureFieldData() {
@@ -609,26 +888,120 @@ class ESignProcessor {
         }, 2000);
     }
 
+    // Process the original PDF, stamp signature placeholders, and trigger download
+    async processAndDownload() {
+        if (!this.uploadedFile || !this.pdfDocument) {
+            this.showToast('No document loaded to process.', 'error');
+            return;
+        }
+
+        // Debug logging
+        console.log('Processing signatures:', this.signatureFields.length, 'fields');
+        this.signatureFields.forEach((field, index) => {
+            console.log(`Field ${index}:`, {
+                page: field.page,
+                signText: field.signText,
+                relativeX: field.relativeX,
+                relativeY: field.relativeY,
+                relativeWidth: field.relativeWidth,
+                relativeHeight: field.relativeHeight
+            });
+        });
+
+        this.showLoading('Applying signatures to document...');
+
+        try {
+            // Load pdf-lib dynamically
+            const pdfLib = await import('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.esm.js');
+            const arrayBuffer = await this.uploadedFile.arrayBuffer();
+            const pdfDoc = await pdfLib.PDFDocument.load(arrayBuffer);
+
+            // For each signature field, draw a rectangle and label on the respective page
+            for (const field of this.signatureFields) {
+                const pageIndex = field.page - 1;
+                if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) continue;
+                const page = pdfDoc.getPages()[pageIndex];
+
+                // Determine page size and convert relative coords to PDF points
+                const { width: pageWidth, height: pageHeight } = page.getSize();
+
+                const x = field.relativeX * pageWidth;
+                // PDF coordinate origin is bottom-left
+                const y = pageHeight - (field.relativeY * pageHeight) - (field.relativeHeight * pageHeight);
+                const w = field.relativeWidth * pageWidth;
+                const h = field.relativeHeight * pageHeight;
+
+                // Draw signature text with proper styling
+                const labelText = field.signText || 'SIGNATURE';
+                
+                // Increase font size for better visibility
+                const fontSize = Math.max(14, h * 0.8);
+                
+                // Center the text within the field bounds
+                const textWidth = labelText.length * (fontSize * 0.6); // approximate text width
+                const textX = x + (w - textWidth) / 2;
+                const textY = y + (h - fontSize) / 2;
+                
+                // Draw a subtle background for the signature
+                page.drawRectangle({ 
+                    x, 
+                    y, 
+                    width: w, 
+                    height: h, 
+                    borderColor: pdfLib.rgb(0.2, 0.2, 0.8), 
+                    borderWidth: 2, 
+                    color: pdfLib.rgb(0.95, 0.95, 1), 
+                    opacity: 0.8 
+                });
+                
+                // Draw the signature text in dark blue
+                page.drawText(labelText, { 
+                    x: Math.max(x + 4, textX), 
+                    y: Math.max(y + 4, textY), 
+                    size: fontSize, 
+                    color: pdfLib.rgb(0, 0, 0.8)
+                });
+            }
+
+            const modifiedBytes = await pdfDoc.save();
+
+            // Trigger download
+            const blob = new Blob([modifiedBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${this.uploadedFile.name.replace(/\.[^.]+$/, '')}_signed.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            this.hideLoading();
+            this.showToast('Signed PDF ready for download', 'success');
+        } catch (error) {
+            console.error('Error stamping PDF:', error);
+            this.hideLoading();
+            this.showToast('Failed to process the PDF. See console for details.', 'error');
+        }
+    }
+
     resetForm() {
         this.uploadedFile = null;
         this.signers = [];
         this.signatureFields = [];
         this.pdfDocument = null;
         
-        this.fileInfo.textContent = 'No document selected';
-        this.prepareBtn.disabled = true;
-        this.prepareBtn.textContent = 'Prepare for Signing';
-        this.configSection.style.display = 'none';
-        this.sendSection.style.display = 'none';
+        if (this.fileInfo) this.fileInfo.textContent = 'No document selected';
+        if (this.prepareBtn) {
+            this.prepareBtn.disabled = true;
+            this.prepareBtn.textContent = 'Prepare for Signing';
+        }
         
-        this.renderSignersList();
-        this.updateSignerSelect();
-        
-        this.signerName.value = '';
-        this.signerEmail.value = '';
-        this.signatureMessage.value = '';
-        
-        this.fileInput.value = '';
+        // Clear any form inputs that might exist
+        if (this.signerName) this.signerName.value = '';
+        if (this.signerEmail) this.signerEmail.value = '';
+        if (this.signatureMessage) this.signatureMessage.value = '';
+        if (this.fileInput) this.fileInput.value = '';
     }
 
     // Utility methods
@@ -673,46 +1046,59 @@ class ESignProcessor {
     }
     makeFieldDraggable(fieldElement, field, overlay, canvas) {
         let isDragging = false;
-        let startX, startY, initialRelativeX, initialRelativeY;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
 
         fieldElement.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            initialRelativeX = field.relativeX;
-            initialRelativeY = field.relativeY;
-            fieldElement.style.cursor = 'grabbing';
             e.preventDefault();
+            e.stopPropagation();
+            
+            isDragging = true;
+            const fieldRect = fieldElement.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            // Calculate offset relative to the field element
+            dragOffsetX = e.clientX - fieldRect.left;
+            dragOffsetY = e.clientY - fieldRect.top;
+            
+            fieldElement.style.cursor = 'grabbing';
+            fieldElement.style.zIndex = '1000';
         });
 
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
+            e.preventDefault();
 
-            const deltaX = e.clientX - startX;
-            const deltaY = e.clientY - startY;
+            const canvasRect = canvas.getBoundingClientRect();
             
-            // Convert pixel deltas to relative deltas
-            const relativeDeltaX = deltaX / canvas.width;
-            const relativeDeltaY = deltaY / canvas.height;
+            // Calculate new position relative to canvas
+            let newX = e.clientX - canvasRect.left - dragOffsetX;
+            let newY = e.clientY - canvasRect.top - dragOffsetY;
             
-            const newRelativeX = Math.max(0, Math.min(1 - field.relativeWidth, initialRelativeX + relativeDeltaX));
-            const newRelativeY = Math.max(0, Math.min(1 - field.relativeHeight, initialRelativeY + relativeDeltaY));
+            // Convert to relative coordinates
+            const newRelativeX = newX / canvas.width;
+            const newRelativeY = newY / canvas.height;
             
-            field.relativeX = newRelativeX;
-            field.relativeY = newRelativeY;
+            // Constrain to canvas bounds
+            const constrainedX = Math.max(0, Math.min(1 - field.relativeWidth, newRelativeX));
+            const constrainedY = Math.max(0, Math.min(1 - field.relativeHeight, newRelativeY));
             
-            // Update visual position
-            const newX = newRelativeX * canvas.width;
-            const newY = newRelativeY * canvas.height;
+            field.relativeX = constrainedX;
+            field.relativeY = constrainedY;
             
-            fieldElement.style.left = newX + 'px';
-            fieldElement.style.top = newY + 'px';
+            // Update visual position with constrained values
+            const finalX = constrainedX * canvas.width;
+            const finalY = constrainedY * canvas.height;
+            
+            fieldElement.style.left = finalX + 'px';
+            fieldElement.style.top = finalY + 'px';
         });
 
         document.addEventListener('mouseup', () => {
             if (isDragging) {
                 isDragging = false;
                 fieldElement.style.cursor = 'move';
+                fieldElement.style.zIndex = '10';
             }
         });
     }
@@ -733,9 +1119,38 @@ class ESignProcessor {
     }
 
     zoomToFit() {
-        // Reset to default scale
-        this.scale = 1.2;
-        this.updateZoom();
+        // Compute a fit-to-container scale for the current page and re-render
+        if (!this.pdfDocument) return;
+
+        const numPages = this.pdfDocument.numPages;
+        if (!this.currentPage || this.currentPage < 1) this.currentPage = 1;
+        if (this.currentPage > numPages) this.currentPage = numPages;
+
+        // Get the page and compute unscaled size
+        this.pdfDocument.getPage(this.currentPage).then(page => {
+            const unscaled = page.getViewport({ scale: 1 });
+            const containerRect = this.documentPagesContainer.getBoundingClientRect();
+            let availW = containerRect.width || 800;
+            let availH = containerRect.height || 600;
+
+            // Account for header space if present
+            const header = this.documentPagesContainer.querySelector('.page-number');
+            if (header) {
+                const headerRect = header.getBoundingClientRect();
+                const headerH = headerRect.height || 28;
+                availH = Math.max(50, availH - headerH - 12);
+            }
+
+            const scaleX = availW / unscaled.width;
+            const scaleY = availH / unscaled.height;
+            const fitScale = Math.max(this.minScale, Math.min(this.maxScale, Math.min(scaleX, scaleY) * 0.98));
+            this.scale = fitScale || this.scale;
+            this.updateZoom();
+        }).catch(err => {
+            console.warn('zoomToFit failed to get page:', err);
+            this.scale = 1.0;
+            this.updateZoom();
+        });
     }
 
     updateZoom() {
@@ -783,5 +1198,3 @@ class ESignProcessor {
 document.addEventListener('DOMContentLoaded', () => {
     window.eSignProcessor = new ESignProcessor();
 });
-
-export default ESignProcessor;
