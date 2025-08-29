@@ -152,6 +152,81 @@ nav, .header-nav{
 .service-card:hover{transform:scale(1.06);box-shadow:0 8px 32px rgba(0,123,215,0.18);border:2px solid rgba(0,120,200,0.08)}
 .service-card:hover img{transform:scale(1.12) rotate(-6deg)}
 
+/* Upcoming feature styling */
+.service-card.upcoming-feature {
+  background: #f0f0f0 !important;
+  border: 2px solid #cccccc !important;
+  color: #888888 !important;
+  cursor: default;
+  pointer-events: auto;
+  position: relative;
+  opacity: 0.5 !important;
+  filter: grayscale(100%) brightness(0.8) !important;
+}
+.service-card.upcoming-feature:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  border: 2px solid #cccccc !important;
+  background: #f0f0f0 !important;
+}
+.service-card.upcoming-feature:hover img {
+  transform: none !important;
+}
+.service-card.upcoming-feature img {
+  filter: grayscale(100%) brightness(0.6) !important;
+  opacity: 0.3 !important;
+}
+.service-card.upcoming-feature h2 {
+  color: #999999 !important;
+  opacity: 0.6 !important;
+}
+.service-card.upcoming-feature p {
+  color: #aaaaaa !important;
+  opacity: 0.5 !important;
+}
+.upcoming-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52) !important;
+  color: white !important;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+  z-index: 10;
+  animation: pulse 2s infinite;
+  filter: none !important;
+  opacity: 1 !important;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.upcoming-badge:hover {
+  background: linear-gradient(135deg, #ff5252, #e53935) !important;
+  box-shadow: 0 4px 16px rgba(255, 107, 107, 0.7) !important;
+  transform: scale(1.1) !important;
+  animation: none !important;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(255, 107, 107, 0.6);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+    transform: scale(1);
+  }
+}
+
 /* Result area placeholder */
 .result-area{margin-top:1rem;background:#fafafa;padding:1rem;border-radius:8px;border:1px solid #eee}
 

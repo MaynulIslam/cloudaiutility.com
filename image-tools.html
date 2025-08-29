@@ -9,7 +9,7 @@
 <body>
   <header>
     <a href="index.html" class="cherry-bomb-one-regular">ToolzzHub.com</a>
-    <nav>
+    <nav class="header-nav">
       <a href="#pro" class="nav-link cherry-bomb-one-regular">Pro</a>
       <a href="#signup" class="nav-link cherry-bomb-one-regular">Sign up</a>
       <a href="#signin" class="nav-link cherry-bomb-one-regular">Sign in</a>
@@ -17,124 +17,42 @@
   </header>
   <main>
     <h1 class="cherry-bomb-one-title">Image Tools</h1>
-    <section>
-      <h2>🔧 Basic Tools</h2>
-      <div class="card-grid">
-        <div class="service-card">
-          <span>📏</span>
-          <h3>Resize Image</h3>
-          <p>Make your picture smaller or bigger.</p>
-        </div>
-        <div class="service-card">
-          <span>✂️</span>
-          <h3>Crop Image</h3>
-          <p>Cut out the unwanted parts of a picture.</p>
-        </div>
-        <div class="service-card">
-          <span>🔄</span>
-          <h3>Rotate / Flip</h3>
-          <p>Turn the image around or flip it upside down / sideways.</p>
-        </div>
-        <div class="service-card">
-          <span>🗜️</span>
-          <h3>Compress Image</h3>
-          <p>Reduce file size without losing too much quality.</p>
-        </div>
-        <div class="service-card">
-          <span>🖼️</span>
-          <h3>Change Format</h3>
-          <p>Convert image to JPG, PNG, WebP, GIF, etc.</p>
-        </div>
+    <section class="card-grid">
+      <!-- Quick Image Edit -->
+      <a class="service-link" href="image/quick-edit.html" aria-label="Quick Image Edit — open page">
+      <div class="service-card">
+        <img src="assets/image_edit.png" alt="Quick Image Edit">
+        <h2>Quick Image Edit</h2>
+        <p>Resize, crop, rotate/flip, change format, and add text to your images.</p>
       </div>
-      <h2>🎨 Editing & Enhancements</h2>
-      <div class="card-grid">
-        <div class="service-card">
-          <span>🔤</span>
-          <h3>Add Text</h3>
-          <p>Write anything on your picture.</p>
-        </div>
-        <div class="service-card">
-          <span>🔲</span>
-          <h3>Add Shapes / Stickers</h3>
-          <p>Put icons, arrows, or shapes on the picture.</p>
-        </div>
-        <div class="service-card">
-          <span>🧹</span>
-          <h3>Background Remover</h3>
-          <p>Delete the background automatically.</p>
-        </div>
-        <div class="service-card">
-          <span>🎚️</span>
-          <h3>Color Adjustments</h3>
-          <p>Change brightness, contrast, saturation, etc.</p>
-        </div>
-        <div class="service-card">
-          <span>🎨</span>
-          <h3>Filters & Effects</h3>
-          <p>Apply Instagram-like filters.</p>
-        </div>
-        <div class="service-card">
-          <span>💧</span>
-          <h3>Blur / Sharpen</h3>
-          <p>Hide or highlight parts of an image.</p>
-        </div>
+      </a>
+
+      <!-- Background Remover -->
+      <a class="service-link" href="image/background-remover.html" aria-label="Background Remover — open page">
+      <div class="service-card">
+        <img src="assets/background_remove.png" alt="Background Remover">
+        <h2>Background Remover</h2>
+        <p>Delete the background automatically using AI technology.</p>
       </div>
-      <h2>🖼️ Advanced Tools</h2>
-      <div class="card-grid">
-        <div class="service-card">
-          <span>🚀</span>
-          <h3>AI Image Upscaler</h3>
-          <p>Improve image quality and make it HD.</p>
-        </div>
-        <div class="service-card">
-          <span>🌄</span>
-          <h3>AI Background Replace</h3>
-          <p>Swap background with a new one.</p>
-        </div>
-        <div class="service-card">
-          <span>💧</span>
-          <h3>Watermark Adder</h3>
-          <p>Add your logo or text for copyright.</p>
-        </div>
-        <div class="service-card">
-          <span>🧽</span>
-          <h3>Watermark Remover</h3>
-          <p>Try to erase unwanted logos/watermarks.</p>
-        </div>
-        <div class="service-card">
-          <span>📄</span>
-          <h3>Image to PDF</h3>
-          <p>Turn pictures into a PDF file.</p>
-        </div>
-        <div class="service-card">
-          <span>🖼️</span>
-          <h3>Collage Maker</h3>
-          <p>Put multiple pictures together in one layout.</p>
-        </div>
+      </a>
+
+      <!-- Change Format -->
+      <a class="service-link" href="image/convert.html" aria-label="Change Format — open page">
+      <div class="service-card">
+        <img src="assets/image_convert.png" alt="Change Format">
+        <h2>Change Format</h2>
+        <p>Convert images to any format: JPG, PNG, WebP, GIF, and more.</p>
       </div>
-      <h2>🗂️ File & Batch Tools</h2>
-      <div class="card-grid">
-        <div class="service-card">
-          <span>📏📁</span>
-          <h3>Batch Resize</h3>
-          <p>Resize many images at once.</p>
-        </div>
-        <div class="service-card">
-          <span>🖼️📁</span>
-          <h3>Batch Convert</h3>
-          <p>Change format for multiple files together.</p>
-        </div>
-        <div class="service-card">
-          <span>🔤📁</span>
-          <h3>Batch Rename</h3>
-          <p>Rename many images with a pattern.</p>
-        </div>
-        <div class="service-card">
-          <span>🗜️📁</span>
-          <h3>Zip Download</h3>
-          <p>Get all edited files in a single zip.</p>
-        </div>
+      </a>
+
+      <!-- AI Image Tools -->
+      <a class="service-link" href="image/ai-tools.html" aria-label="AI Image Tools — open page">
+      <div class="service-card">
+        <img src="assets/ai_image.png" alt="AI Image Tools">
+        <h2>AI Image Tools</h2>
+        <p>AI Image Upscaler, AI Background Replace, Watermark Adder & Remover.</p>
       </div>
+      </a>
     </section>
   </main>
   <footer>
