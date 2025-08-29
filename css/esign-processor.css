@@ -558,6 +558,7 @@
   pointer-events: none;
 }
 
+/*
 .signature-field {
   position: absolute;
   border: 2px solid var(--accent);
@@ -575,6 +576,7 @@
   justify-content: center;
   font-weight: 600;
 }
+*/
 
 .signature-field:hover {
   background: rgba(38, 105, 105, 0.2);

@@ -245,6 +245,27 @@
 
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
+  <!-- Diagnostics panel for remote logging to local log server -->
+  <div id="ocr-diagnostics" style="position:fixed;right:8px;bottom:8px;width:320px;max-height:40vh;overflow:auto;background:rgba(0,0,0,0.8);color:#fff;padding:8px;border-radius:6px;z-index:9999;font-size:12px;display:none;">
+    <div style="font-weight:bold;margin-bottom:6px">OCR Diagnostics</div>
+    <div id="ocr-diagnostics-log" style="white-space:pre-wrap;font-family:monospace;"></div>
+  </div>
+  <script>
+    // Small helper to append diagnostics locally and POST to local log server
+    function ocrDiag(msg) {
+      try {
+        const el = document.getElementById('ocr-diagnostics');
+        const logEl = document.getElementById('ocr-diagnostics-log');
+        el.style.display = 'block';
+        const time = new Date().toISOString();
+        const line = `[${time}] ${msg}`;
+        logEl.textContent = line + '\n' + logEl.textContent;
+        // Post to local log server (optional - ensure local_log_server.py is running)
+        fetch('http://localhost:9000/log', {method:'POST', headers:{'Content-Type':'text/plain'}, body: line}).catch(()=>{});
+      } catch (e) { console.warn('diag failed', e); }
+    }
+    window.ocrDiag = ocrDiag;
+  </script>
   <script>
     // Configure PDF.js worker when it's loaded
     function configurePDFJS() {
@@ -257,7 +278,21 @@
       }
     }
     configurePDFJS();
+
+    // Ensure Tesseract is available globally
+    function waitForTesseract() {
+      return new Promise((resolve) => {
+        if (window.Tesseract) {
+          console.log('✅ Tesseract.js loaded successfully');
+          resolve();
+        } else {
+          console.log('⏳ Waiting for Tesseract.js to load...');
+          setTimeout(() => waitForTesseract().then(resolve), 100);
+        }
+      });
+    }
+    window.waitForTesseract = waitForTesseract;
   </script>
-  <script src="../js/ocr-processor.js" type="module"></script>
+  <script src="../js/ocr-processor.js?v=2"></script>
 </body>
 </html>

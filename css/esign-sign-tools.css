@@ -155,23 +155,163 @@
 }
 
 .pdf-page-wrapper .signature-field {
+  /* Neutralize any legacy template appearance */
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  color: inherit !important;
   pointer-events: auto; /* allow dragging and clicking */
 }
 
 .signature-textarea {
   font-family: var(--ui-font, Arial, sans-serif);
   color: #111;
-  background: rgba(255,255,255,0.9);
-  border: 1px dashed #888;
+  background: transparent;
+  border: 1px dashed #ccc;
   border-radius: 4px;
   outline: none;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  box-shadow: none;
   min-width: 80px;
   min-height: 28px;
   max-width: 90%;
   max-height: 60%;
   overflow: auto;
 }
+
+.signature-plain {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: #0b0b0b;
+  font-family: var(--ui-font, Arial, sans-serif);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.signature-text-only {
+  position: absolute !important;
+  background: none !important;
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  box-sizing: content-box !important;
+  color: #000 !important;
+  font-family: Arial, sans-serif !important;
+  pointer-events: auto;
+  user-select: none;
+  white-space: nowrap;
+  display: inline !important;
+  line-height: 1 !important;
+}
+
+/* Style for the currently selected text field */
+.signature-text-only.selected {
+  outline: 2px dashed #266969; /* Use accent color */
+  outline-offset: 3px;
+}
+
+/* Hard override to prevent any residual template styles around text */
+.page-signature-overlay .signature-text-only,
+.page-signature-overlay .signature-text-only * {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Hide any legacy template elements if they somehow remain */
+.page-signature-overlay .signature-field,
+.page-signature-overlay .signature-field *,
+.page-signature-overlay .field-label,
+.page-signature-overlay .delete-field {
+  display: none !important;
+}
+
+.signature-image-wrapper {
+  background: transparent !important;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  position: relative;
+  cursor: move;
+}
+
+.signature-image-wrapper .resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  background: #666;
+  cursor: nw-resize;
+  border-radius: 2px;
+}
+
+.signature-image {
+  position: absolute;
+  background: transparent !important;
+  border: none !important;
+  cursor: move;
+}
+
+.signature-image .delete-field {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: #ff4444;
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+/* Also neutralize legacy label/delete within boxed templates if they appear */
+.signature-field .field-label {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: inherit !important;
+}
+.signature-field .delete-field {
+  display: none !important; /* hide red X on legacy boxes */
+}
+
+.img-preview {
+  margin-top: 4px;
+  min-height: 20px;
+}
+
+.sign-controls {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.sign-image-input {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
 
 
 /* Side navigation arrows shown on left/right of the page preview */
@@ -198,3 +338,55 @@
 .side-nav-btn.right { pointer-events: auto; }
 .side-nav-btn:hover { color: rgba(0,0,0,0.85); }
 .side-nav-btn:hover svg { stroke: rgba(0,0,0,0.85); }
+
+/* Signature Controls in Modal Header */
+.signature-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: 1.5rem;
+  margin-right: auto; /* Pushes subsequent items to the right */
+}
+
+.font-select,
+.font-size-input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 0.9rem;
+}
+
+.font-select {
+  min-width: 150px; /* Give it some space */
+}
+
+.font-size-input {
+  width: 60px; /* Narrower for the number */
+}
+
+.font-color-input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 50%; /* Make it a circle */
+  cursor: pointer;
+  background-color: transparent;
+}
+
+/* Style the inner color swatch for WebKit browsers (Chrome, Safari) */
+.font-color-input::-webkit-color-swatch {
+  border-radius: 50%;
+  border: none;
+}
+
+/* Style the inner color swatch for Firefox */
+.font-color-input::-moz-color-swatch {
+  border-radius: 50%;
+  border: none;
+}
+

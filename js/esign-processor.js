@@ -13,9 +13,15 @@ class ESignProcessor {
         this.maxScale = 3.0;
         this.scaleStep = 0.2;
     this.pageDirection = null; // 'from-right' or 'from-left' for animation
+        // When true, control change handlers should not apply changes to fields (used during programmatic updates)
+        this.suppressStyleUpdates = false;
         
-        this.initializeElements();
-        this.setupEventListeners();
+    this.initializeElements();
+    this.setupEventListeners();
+
+    // in-memory action log for debugging (exposed via window for easy access)
+    this.actionLogs = [];
+    this.log('eSign initialized', { currentPage: this.currentPage });
     }
 
     initializeElements() {
@@ -44,12 +50,9 @@ class ESignProcessor {
         this.modal = document.getElementById('document-preview-modal');
         this.closeModalBtn = document.getElementById('close-modal');
         this.documentPagesContainer = document.getElementById('document-pages-container');
-    this.fieldSignerSelect = document.getElementById('field-signer-select');
+    // Removed signer selection as it is no longer required
         this.completeSetupBtn = document.getElementById('complete-setup-btn');
-    // Sign tool elements
-    this.signDropdown = document.getElementById('sign-dropdown');
-    this.currentSignValue = document.getElementById('current-sign-value');
-    this.signToggleBtn = document.getElementById('add-signature-field');
+    // No legacy sign dropdown/image elements in simplified flow
         
         // Zoom control elements
         this.zoomInBtn = document.getElementById('zoom-in-btn');
@@ -57,23 +60,27 @@ class ESignProcessor {
         this.zoomFitBtn = document.getElementById('zoom-fit-btn');
         this.zoomLevel = document.getElementById('zoom-level');
         
+        // Signature style controls
+        this.fontFamilySelect = document.getElementById('font-family-select');
+        this.fontSizeInput = document.getElementById('font-size-input');
+        this.fontColorInput = document.getElementById('font-color-input');
+
         // Toolbar elements
         this.toolbarBtns = document.querySelectorAll('.toolbar-btn');
 
-    // Internal state for selected sign text
-    this.selectedSignIndex = null;
-    this.selectedSignText = null;
+    // Text-only flow state
+    this.selectedFontSize = 20;
         
         // Other elements
         this.loadingOverlay = document.getElementById('loading-overlay');
         this.loadingMessage = document.getElementById('loading-message');
         this.toastContainer = document.getElementById('toast-container');
-    // Page navigation controls inside modal
-    this.prevPageBtn = document.getElementById('prev-page-btn');
-    this.nextPageBtn = document.getElementById('next-page-btn');
-    // bottom nav buttons (large red arrows)
-    this.sidePrevBtn = document.getElementById('side-prev-btn');
-    this.sideNextBtn = document.getElementById('side-next-btn');
+        // Page navigation controls inside modal
+        this.prevPageBtn = document.getElementById('prev-page-btn');
+        this.nextPageBtn = document.getElementById('next-page-btn');
+        // bottom nav buttons (large red arrows)
+        this.sidePrevBtn = document.getElementById('side-prev-btn');
+        this.sideNextBtn = document.getElementById('side-next-btn');
     }
 
     setupEventListeners() {
@@ -98,62 +105,60 @@ class ESignProcessor {
         if (this.sendBtn) this.sendBtn.addEventListener('click', () => this.sendForSignature());
         
         // Modal events
-    if (this.closeModalBtn) this.closeModalBtn.addEventListener('click', () => this.closeModal());
-    if (this.completeSetupBtn) {
-        // When used inside modal, treat as Save: process and download the stamped PDF
-        this.completeSetupBtn.addEventListener('click', () => {
-            // If modal is visible, process and download; otherwise run original complete flow
-            if (this.modal && this.modal.style.display !== 'none') {
-                this.processAndDownload();
-            } else {
-                this.completeSetup();
-            }
-        });
-    }
-        
-        // Toolbar events
-        this.toolbarBtns.forEach(btn => {
-            btn.addEventListener('click', () => this.selectFieldType(btn.dataset.fieldType));
-        });
-
-        // Sign dropdown toggle and choose handlers
-        if (this.signToggleBtn) {
-            this.signToggleBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (!this.signDropdown) return;
-                this.signDropdown.style.display = this.signDropdown.style.display === 'none' ? 'block' : 'none';
+        if (this.closeModalBtn) this.closeModalBtn.addEventListener('click', () => this.closeModal());
+        if (this.completeSetupBtn) {
+            // When used inside modal, treat as Save: process and download the stamped PDF
+            this.completeSetupBtn.addEventListener('click', () => {
+                // If modal is visible, process and download; otherwise run original complete flow
+                if (this.modal && this.modal.style.display !== 'none') {
+                    this.processAndDownload();
+                } else {
+                    this.completeSetup();
+                }
             });
         }
-
-        // Delegate choose sign buttons
-        document.addEventListener('click', (e) => {
-            const btn = e.target.closest && e.target.closest('.choose-sign-btn');
-            if (btn) {
-                const idx = btn.dataset.index;
-                const input = document.getElementById('sign-input-' + idx);
-                if (input) {
-                    this.selectedSignIndex = idx;
-                    this.selectedSignText = input.value || (`SIGN-${idx}`);
-                    if (this.currentSignValue) this.currentSignValue.textContent = this.selectedSignText;
-                    if (this.signDropdown) this.signDropdown.style.display = 'none';
+        
+        // Deselection logic when clicking on the background of the pages container
+        if (this.documentPagesContainer) {
+            this.documentPagesContainer.addEventListener('click', (e) => {
+                // If click is on the container, wrapper, or canvas, but not on a signature field
+                if (e.target === this.documentPagesContainer || e.target.classList.contains('pdf-page-wrapper') || e.target.classList.contains('pdf-page-canvas')) {
+                    if (this.selectedField) {
+                        const oldElement = document.querySelector(`.signature-text-only.selected`);
+                        if (oldElement) {
+                            oldElement.classList.remove('selected');
+                        }
+                        this.selectedField = null;
+                    }
                 }
-            } else {
-                // Click outside closes dropdown
-                if (this.signDropdown && !e.target.closest('.sign-dropdown')) {
-                    this.signDropdown.style.display = 'none';
-                }
-            }
-        });
+            });
+        }
+        
+    // No toolbar or sign dropdown/image events in simplified flow
         
         // Zoom control events
-    if (this.zoomInBtn) this.zoomInBtn.addEventListener('click', () => this.zoomIn());
-    if (this.zoomOutBtn) this.zoomOutBtn.addEventListener('click', () => this.zoomOut());
-    if (this.zoomFitBtn) this.zoomFitBtn.addEventListener('click', () => this.zoomToFit());
-    if (this.prevPageBtn) this.prevPageBtn.addEventListener('click', (e) => { e.stopPropagation(); this.prevPage(); });
-    if (this.nextPageBtn) this.nextPageBtn.addEventListener('click', (e) => { e.stopPropagation(); this.nextPage(); });
-    if (this.sidePrevBtn) this.sidePrevBtn.addEventListener('click', (e) => { e.stopPropagation(); this.prevPage(); });
-    if (this.sideNextBtn) this.sideNextBtn.addEventListener('click', (e) => { e.stopPropagation(); this.nextPage(); });
+        if (this.zoomInBtn) this.zoomInBtn.addEventListener('click', () => this.zoomIn());
+        if (this.zoomOutBtn) this.zoomOutBtn.addEventListener('click', () => this.zoomOut());
+        if (this.zoomFitBtn) this.zoomFitBtn.addEventListener('click', () => this.zoomToFit());
+        if (this.prevPageBtn) this.prevPageBtn.addEventListener('click', (e) => { e.stopPropagation(); this.prevPage(); });
+        if (this.nextPageBtn) this.nextPageBtn.addEventListener('click', (e) => { e.stopPropagation(); this.nextPage(); });
+        if (this.sidePrevBtn) this.sidePrevBtn.addEventListener('click', (e) => { e.stopPropagation(); this.prevPage(); });
+        if (this.sideNextBtn) this.sideNextBtn.addEventListener('click', (e) => { e.stopPropagation(); this.nextPage(); });
         
+        // Signature style control events - use guarded handlers to avoid re-applying defaults during programmatic updates
+        if (this.fontFamilySelect) this.fontFamilySelect.addEventListener('change', (e) => {
+            if (this.suppressStyleUpdates) return;
+            this.updateSelectedFieldStyle();
+        });
+        if (this.fontSizeInput) this.fontSizeInput.addEventListener('input', (e) => {
+            if (this.suppressStyleUpdates) return;
+            this.updateSelectedFieldStyle();
+        });
+        if (this.fontColorInput) this.fontColorInput.addEventListener('input', (e) => {
+            if (this.suppressStyleUpdates) return;
+            this.updateSelectedFieldStyle();
+        });
+
         // Keyboard events
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.modal.style.display !== 'none') {
@@ -200,9 +205,7 @@ class ESignProcessor {
                 }
             });
         }
-    }
-
-    goToPage(pageNum) {
+    }    goToPage(pageNum) {
         if (!this.pdfDocument) return;
         const numPages = this.pdfDocument.numPages;
         if (pageNum < 1) pageNum = 1;
@@ -431,12 +434,8 @@ class ESignProcessor {
                 if (data.documentInfo?.name === this.uploadedFile?.name && 
                     data.documentInfo?.pages === this.pdfDocument?.numPages) {
                     
-                    // Restore signature fields if signers match
-                    const currentSignerIds = this.signers.map(s => s.id);
-                    const validFields = data.fields.filter(field => 
-                        currentSignerIds.includes(field.signerId)
-                    );
-                    
+                    // Restore all stored fields (anonymous placement supported)
+                    const validFields = Array.isArray(data.fields) ? data.fields : [];
                     if (validFields.length > 0) {
                         this.signatureFields = validFields;
                         this.renderSignatureFields();
@@ -592,13 +591,22 @@ class ESignProcessor {
     }
 
     addSignatureField(event, pageNumber, canvas, overlay) {
+        // When clicking to add a new field, deselect any active one.
+        if (this.selectedField) {
+            const oldElement = document.querySelector(`.signature-text-only.selected`);
+            if (oldElement) {
+                oldElement.classList.remove('selected');
+            }
+            this.selectedField = null;
+        }
+
         // No longer require signer selection - place signatures anonymously
         const rect = canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
-        // Create an editable, resizable textarea so user can edit text and resize to change size
-        overlay.style.pointerEvents = 'auto';
+    overlay.style.pointerEvents = 'auto';
 
+        // Create an editable, resizable textarea so user can edit text and resize to change size
         const textarea = document.createElement('textarea');
         textarea.className = 'signature-textarea';
         textarea.value = this.selectedSignText || '';
@@ -607,7 +615,10 @@ class ESignProcessor {
         textarea.style.top = y + 'px';
         textarea.style.width = '180px';
         textarea.style.height = '48px';
-        textarea.style.fontSize = '20px';
+        // Apply current styles from controls
+        textarea.style.fontFamily = this.fontFamilySelect ? this.fontFamilySelect.value : 'Arial';
+        textarea.style.fontSize = this.fontSizeInput ? this.fontSizeInput.value + 'px' : '20px';
+        textarea.style.color = this.fontColorInput ? this.fontColorInput.value : '#000000';
         textarea.style.resize = 'both';
         textarea.style.padding = '6px 8px';
         textarea.style.boxSizing = 'border-box';
@@ -615,6 +626,49 @@ class ESignProcessor {
         textarea.setAttribute('placeholder', 'Type signature text and press Enter to place');
         overlay.appendChild(textarea);
         textarea.focus();
+
+        // --- FIX STARTS HERE ---
+        // Create a canonical style object that will be the single source-of-truth for this textarea
+        const canonicalStyle = {
+            fontFamily: this.fontFamilySelect ? this.fontFamilySelect.value : 'Arial',
+            fontSize: this.fontSizeInput ? parseInt(this.fontSizeInput.value, 10) : 20,
+            color: this.fontColorInput ? this.fontColorInput.value : '#000000'
+        };
+
+    // Apply canonical styles to the textarea initially
+    textarea.style.fontFamily = canonicalStyle.fontFamily;
+    textarea.style.fontSize = canonicalStyle.fontSize + 'px';
+    textarea.style.color = canonicalStyle.color;
+    console.log('[eSign] textarea created at', { page: pageNumber, x, y, canonicalStyle });
+
+        // Handlers that update the canonical style and reflect it into textarea
+        const onFontFamilyChange = (e) => {
+            canonicalStyle.fontFamily = this.fontFamilySelect.value;
+            textarea.style.fontFamily = canonicalStyle.fontFamily;
+            console.log('[eSign] font family changed (textarea)', canonicalStyle.fontFamily);
+        };
+        const onFontSizeChange = (e) => {
+            canonicalStyle.fontSize = parseInt(this.fontSizeInput.value, 10);
+            textarea.style.fontSize = canonicalStyle.fontSize + 'px';
+            console.log('[eSign] font size changed (textarea)', canonicalStyle.fontSize);
+        };
+        const onFontColorChange = (e) => {
+            canonicalStyle.color = this.fontColorInput.value;
+            textarea.style.color = canonicalStyle.color;
+            console.log('[eSign] font color changed (textarea)', canonicalStyle.color);
+        };
+
+        // Attach listeners to the controls to update the canonical style live.
+        this.fontFamilySelect.addEventListener('change', onFontFamilyChange);
+        this.fontSizeInput.addEventListener('input', onFontSizeChange);
+        this.fontColorInput.addEventListener('input', onFontColorChange);
+
+        const cleanupListeners = () => {
+            this.fontFamilySelect.removeEventListener('change', onFontFamilyChange);
+            this.fontSizeInput.removeEventListener('input', onFontSizeChange);
+            this.fontColorInput.removeEventListener('input', onFontColorChange);
+        };
+        // --- FIX ENDS HERE ---
 
         // Allow dragging of the textarea
         let isDragging = false;
@@ -664,50 +718,73 @@ class ESignProcessor {
             updateFontSizeFromBox();
         });
 
-        // Finalize placement on Enter
+        // --- FIX: Centralize placement logic to be reusable ---
+        let isFinalizing = false;
+        const finalizePlacement = () => {
+            if (isFinalizing) return;
+            isFinalizing = true;
+
+            // First, remove the temporary listeners to prevent leaks.
+            cleanupListeners();
+
+            const finalText = textarea.value.trim();
+            if (!finalText) {
+                // if empty, just remove
+                if (textarea.parentNode) textarea.parentNode.removeChild(textarea);
+                overlay.style.pointerEvents = 'none';
+                return;
+            }
+
+            // Create the field object and save
+            const rectNow = canvas.getBoundingClientRect();
+            const left = parseFloat(textarea.style.left);
+            const top = parseFloat(textarea.style.top);
+            const w = textarea.offsetWidth;
+            const h = textarea.offsetHeight;
+
+            console.log('[eSign] Finalizing placement', { finalText, canonicalStyle });
+            const field = {
+                id: Date.now(),
+                type: 'signature',
+                signerId: 1,
+                signText: finalText,
+                page: pageNumber,
+                x: left,
+                y: top,
+                width: w,
+                height: h,
+                relativeX: left / canvas.width,
+                relativeY: top / canvas.height,
+                relativeWidth: w / canvas.width,
+                relativeHeight: h / canvas.height,
+                // Pull style values from canonicalStyle to ensure consistency
+                fontFamily: canonicalStyle.fontFamily,
+                color: canonicalStyle.color,
+                fontSize: canonicalStyle.fontSize
+            };
+
+            this.signatureFields.push(field);
+            if (textarea.parentNode) textarea.parentNode.removeChild(textarea);
+            overlay.style.pointerEvents = 'none';
+            this.renderSignatureFields();
+            this.showToast(`Signature placed on page ${pageNumber}`, 'success');
+            
+            // Ensure no signature is selected after placement
+            this.selectedField = null;
+            document.querySelectorAll('.signature-text-only.selected').forEach(el => el.classList.remove('selected'));
+        };
+
+        // Finalize on Enter key
         textarea.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 e.stopPropagation();
-                const finalText = textarea.value.trim();
-                if (!finalText) {
-                    // if empty, just remove
-                    overlay.removeChild(textarea);
-                    overlay.style.pointerEvents = 'none';
-                    return;
-                }
-
-                // Create the field object and save
-                const rectNow = canvas.getBoundingClientRect();
-                const left = parseFloat(textarea.style.left);
-                const top = parseFloat(textarea.style.top);
-                const w = textarea.offsetWidth;
-                const h = textarea.offsetHeight;
-
-                const field = {
-                    id: Date.now(),
-                    type: 'signature',
-                    signerId: 1,
-                    signText: finalText,
-                    page: pageNumber,
-                    x: left,
-                    y: top,
-                    width: w,
-                    height: h,
-                    relativeX: left / canvas.width,
-                    relativeY: top / canvas.height,
-                    relativeWidth: w / canvas.width,
-                    relativeHeight: h / canvas.height
-                };
-
-                this.signatureFields.push(field);
-                // cleanup
-                if (textarea.parentNode) textarea.parentNode.removeChild(textarea);
-                overlay.style.pointerEvents = 'none';
-                this.renderSignatureFields();
-                this.showToast(`Signature placed on page ${pageNumber}`, 'success');
+                finalizePlacement();
             }
         });
+
+        // Finalize when clicking outside the textarea
+        textarea.addEventListener('blur', finalizePlacement);
     }
 
     renderSignatureFields() {
@@ -715,6 +792,8 @@ class ESignProcessor {
         document.querySelectorAll('.page-signature-overlay').forEach(overlay => {
             overlay.innerHTML = '';
         });
+        // Defensive cleanup: remove any legacy boxed templates if present
+        document.querySelectorAll('.signature-field').forEach(el => el.remove());
         
         this.signatureFields.forEach(field => {
             const overlay = document.querySelector(`.page-signature-overlay[data-page-number="${field.page}"]`);
@@ -727,48 +806,62 @@ class ESignProcessor {
             const width = field.relativeWidth * canvas.width;
             const height = field.relativeHeight * canvas.height;
 
-            const fieldElement = document.createElement('div');
-            fieldElement.className = 'signature-field';
-            fieldElement.dataset.fieldType = field.type;
-            fieldElement.dataset.fieldId = field.id;
-            fieldElement.style.left = x + 'px';
-            fieldElement.style.top = y + 'px';
-            fieldElement.style.width = width + 'px';
-            fieldElement.style.height = height + 'px';
+            // Render completely plain text only (no container, no styling) at the saved position
+            const textElement = document.createElement('span');
+            textElement.className = 'signature-text-only';
+            textElement.dataset.fieldType = field.type;
+            textElement.dataset.fieldId = field.id;
             
-            const fieldLabel = document.createElement('div');
-            fieldLabel.className = 'field-label';
-            fieldLabel.textContent = field.signText || 'SIGNATURE';
+            // Apply only essential positioning and text styling
+            textElement.style.position = 'absolute';
+            textElement.style.left = x + 'px';
+            textElement.style.top = y + 'px';
+            textElement.style.background = 'none';
+            textElement.style.border = 'none';
+            textElement.style.padding = '0';
+            textElement.style.margin = '0';
+            textElement.style.boxShadow = 'none';
+            textElement.style.outline = 'none';
+            textElement.style.pointerEvents = 'auto';
+            textElement.style.userSelect = 'none';
+            textElement.style.whiteSpace = 'nowrap';
             
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-field';
-            deleteBtn.innerHTML = '×';
-            deleteBtn.onclick = (e) => {
+            // Apply stored styles
+            textElement.style.color = field.color || '#000000';
+            textElement.style.fontFamily = field.fontFamily || 'Arial';
+            textElement.style.fontSize = (field.fontSize || Math.max(10, Math.round(height * 0.35))) + 'px';
+            textElement.textContent = field.signText || 'SIGNATURE';
+
+            // Allow clicking to select (keeps existing selection behavior)
+            textElement.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.removeSignatureField(field.id);
-            };
-            
-            fieldElement.appendChild(fieldLabel);
-            fieldElement.appendChild(deleteBtn);
-            
-            fieldElement.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.selectField(field);
+                this.selectField(field, textElement);
             });
-            
-            // Make fields draggable
-            this.makeFieldDraggable(fieldElement, field, overlay, canvas);
-            
-            overlay.appendChild(fieldElement);
+
+            // Still allow dragging the plain text element to reposition
+            this.makeFieldDraggable(textElement, field, overlay, canvas);
+
+            overlay.appendChild(textElement);
         });
     }
 
-    selectField(field) {
+    selectField(field, element) {
         this.selectedField = field;
-        document.querySelectorAll('.signature-field').forEach(el => {
-            el.classList.remove('selected');
-        });
-        event.target.classList.add('selected');
+        document.querySelectorAll('.signature-text-only').forEach(el => el.classList.remove('selected'));
+        if (element) {
+            element.classList.add('selected');
+            // Update controls to reflect selected field's style. Suppress change handlers while updating controls.
+            this.suppressStyleUpdates = true;
+            try {
+                if (this.fontFamilySelect) this.fontFamilySelect.value = field.fontFamily || 'Arial';
+                if (this.fontSizeInput) this.fontSizeInput.value = field.fontSize || 20;
+                if (this.fontColorInput) this.fontColorInput.value = field.color || '#000000';
+                console.log('[eSign] selectField set controls to', { fontFamily: this.fontFamilySelect.value, fontSize: this.fontSizeInput.value, color: this.fontColorInput.value });
+            } finally {
+                // Allow updates again after a short defer to ensure no immediate event triggers fire
+                setTimeout(() => { this.suppressStyleUpdates = false; }, 0);
+            }
+        }
     }
 
     removeSignatureField(fieldId) {
@@ -803,10 +896,15 @@ class ESignProcessor {
                 signerId: field.signerId,
                 signerName: this.signers.find(s => s.id === field.signerId)?.name,
                 page: field.page,
+                signText: field.signText,
                 relativeX: field.relativeX,
                 relativeY: field.relativeY,
                 relativeWidth: field.relativeWidth,
-                relativeHeight: field.relativeHeight
+                relativeHeight: field.relativeHeight,
+                // Also preserve style info
+                fontFamily: field.fontFamily,
+                fontSize: field.fontSize,
+                color: field.color
             })),
             signers: this.signers,
             documentInfo: {
@@ -916,7 +1014,32 @@ class ESignProcessor {
             const arrayBuffer = await this.uploadedFile.arrayBuffer();
             const pdfDoc = await pdfLib.PDFDocument.load(arrayBuffer);
 
-            // For each signature field, draw a rectangle and label on the respective page
+            // Embed custom fonts
+            const fontCache = {};
+            const fontUrls = {
+                "'Dancing Script', cursive": 'https://fonts.gstatic.com/s/dancingscript/v24/If2RXTr6YS-zF4S-kcSWSVi_szLviuEViw.ttf',
+                "'Great Vibes', cursive": 'https://fonts.gstatic.com/s/greatvibes/v14/RWmMoKWR9v4ksMvYJwAbe8c.ttf',
+                "'Pacifico', cursive": 'https://fonts.gstatic.com/s/pacifico/v22/FwZY7-Qmy14u9lezJ-6H6Mk.ttf',
+                "'Cedarville Cursive', cursive": 'https://fonts.gstatic.com/s/cedarvillecursive/v19/yYLr0hG387S_S94DPjY_v2-s-3wA4w.ttf',
+                "'Allura', cursive": 'https://fonts.gstatic.com/s/allura/v16/9oRPNYsQpS4zjuAPjA.ttf'
+            };
+
+            async function getFont(fontFamily) {
+                if (fontCache[fontFamily]) return fontCache[fontFamily];
+                if (fontUrls[fontFamily]) {
+                    try {
+                        const fontBytes = await fetch(fontUrls[fontFamily]).then(res => res.arrayBuffer());
+                        const customFont = await pdfDoc.embedFont(fontBytes);
+                        fontCache[fontFamily] = customFont;
+                        return customFont;
+                    } catch (e) {
+                        console.warn(`Failed to load custom font ${fontFamily}. Falling back to Helvetica.`, e);
+                    }
+                }
+                return pdfDoc.embedFont(pdfLib.StandardFonts.Helvetica);
+            }
+
+            // For each signature field, draw signature text only on the respective page
             for (const field of this.signatureFields) {
                 const pageIndex = field.page - 1;
                 if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) continue;
@@ -931,35 +1054,28 @@ class ESignProcessor {
                 const w = field.relativeWidth * pageWidth;
                 const h = field.relativeHeight * pageHeight;
 
-                // Draw signature text with proper styling
+                // Draw signature text only (no rectangle/background)
                 const labelText = field.signText || 'SIGNATURE';
-                
-                // Increase font size for better visibility
-                const fontSize = Math.max(14, h * 0.8);
-                
-                // Center the text within the field bounds
-                const textWidth = labelText.length * (fontSize * 0.6); // approximate text width
-                const textX = x + (w - textWidth) / 2;
-                const textY = y + (h - fontSize) / 2;
-                
-                // Draw a subtle background for the signature
-                page.drawRectangle({ 
-                    x, 
-                    y, 
-                    width: w, 
-                    height: h, 
-                    borderColor: pdfLib.rgb(0.2, 0.2, 0.8), 
-                    borderWidth: 2, 
-                    color: pdfLib.rgb(0.95, 0.95, 1), 
-                    opacity: 0.8 
-                });
-                
-                // Draw the signature text in dark blue
-                page.drawText(labelText, { 
-                    x: Math.max(x + 4, textX), 
-                    y: Math.max(y + 4, textY), 
-                    size: fontSize, 
-                    color: pdfLib.rgb(0, 0, 0.8)
+                const font = await getFont(field.fontFamily);
+                const colorRgb = field.color ? pdfLib.rgb(
+                    parseInt(field.color.slice(1, 3), 16) / 255,
+                    parseInt(field.color.slice(3, 5), 16) / 255,
+                    parseInt(field.color.slice(5, 7), 16) / 255
+                ) : pdfLib.rgb(0, 0, 0);
+
+                // Choose font size based on stored field height (use a reasonable scale)
+                const fontSize = field.fontSize || Math.max(10, Math.round(h * 0.6));
+
+                // Left-align the text at the saved x; vertically center within the height
+                const textX = x + 2; // small padding
+                const textY = y + Math.max(0, Math.round((h - fontSize) / 2));
+
+                page.drawText(labelText, {
+                    x: textX,
+                    y: textY,
+                    size: fontSize,
+                    font: font,
+                    color: colorRgb
                 });
             }
 
@@ -1044,6 +1160,19 @@ class ESignProcessor {
         div.textContent = text;
         return div.innerHTML;
     }
+    // Structured logger for debugging — stores logs in memory and prints to console
+    log(action, details = {}) {
+        try {
+            const entry = { ts: new Date().toISOString(), action, details };
+            this.actionLogs = this.actionLogs || [];
+            this.actionLogs.push(entry);
+            // concise console output for developer visibility
+            console.log('[eSign log]', entry);
+        } catch (e) {
+            // safe noop
+            console.warn('eSign logging failed', e);
+        }
+    }
     makeFieldDraggable(fieldElement, field, overlay, canvas) {
         let isDragging = false;
         let dragOffsetX = 0;
@@ -1101,6 +1230,32 @@ class ESignProcessor {
                 fieldElement.style.zIndex = '10';
             }
         });
+    }
+
+    updateSelectedFieldStyle() {
+        if (!this.selectedField) return;
+
+        const newFontFamily = this.fontFamilySelect.value;
+        const newFontSize = parseInt(this.fontSizeInput.value, 10);
+        const newColor = this.fontColorInput.value;
+
+        // Find the field in the main array and update it
+        const fieldToUpdate = this.signatureFields.find(f => f.id === this.selectedField.id);
+        if (fieldToUpdate) {
+            fieldToUpdate.fontFamily = newFontFamily;
+            fieldToUpdate.fontSize = newFontSize;
+            fieldToUpdate.color = newColor;
+
+            console.log('[eSign] updateSelectedFieldStyle applied', { id: fieldToUpdate.id, fontFamily: newFontFamily, fontSize: newFontSize, color: newColor });
+
+            // Update the DOM element directly for immediate feedback
+            const element = document.querySelector(`.signature-text-only[data-field-id="${fieldToUpdate.id}"]`);
+            if (element) {
+                element.style.fontFamily = newFontFamily;
+                element.style.fontSize = newFontSize + 'px';
+                element.style.color = newColor;
+            }
+        }
     }
 
     // Zoom functionality methods

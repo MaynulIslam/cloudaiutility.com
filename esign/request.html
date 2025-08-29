@@ -8,6 +8,9 @@
   <link rel="stylesheet" href="../css/esign-processor.css">
   <link rel="stylesheet" href="../css/esign-sign-tools.css">
   <link rel="stylesheet" href="../css/wipe-style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cedarville+Cursive&family=Dancing+Script&family=Great+Vibes&family=Pacifico&display=swap" rel="stylesheet">
 </head>
 <body>
   <!-- Site Header Navigation -->
@@ -74,44 +77,20 @@
         <div class="modal-header">
           <div class="modal-title-section">
             <h2>Place Signatures</h2>
-            <div class="field-toolbar">
-              <div class="dropdown-container">
-                <button id="add-signature-field" class="toolbar-btn dropdown-btn" data-field-type="signature">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                  </svg>
-                  Add Sign
-                  <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <polyline points="6,9 12,15 18,9"></polyline>
-                  </svg>
-                </button>
-                <div id="sign-dropdown" class="sign-dropdown" style="display: none;">
-                  <div class="sign-row">
-                    <label>1</label>
-                    <input class="sign-input" id="sign-input-1" placeholder="Sign 1 text">
-                    <button class="choose-sign-btn" data-index="1">Use</button>
-                  </div>
-                  <div class="sign-row">
-                    <label>2</label>
-                    <input class="sign-input" id="sign-input-2" placeholder="Sign 2 text">
-                    <button class="choose-sign-btn" data-index="2">Use</button>
-                  </div>
-                  <div class="sign-row">
-                    <label>3</label>
-                    <input class="sign-input" id="sign-input-3" placeholder="Sign 3 text">
-                    <button class="choose-sign-btn" data-index="3">Use</button>
-                  </div>
-                  <div class="sign-row">
-                    <label>4</label>
-                    <input class="sign-input" id="sign-input-4" placeholder="Sign 4 text">
-                    <button class="choose-sign-btn" data-index="4">Use</button>
-                  </div>
-                </div>
-              </div>
+            
+            <div class="signature-controls">
+              <select id="font-family-select" class="font-select">
+                <option value="Arial">Arial</option>
+                <option value="'Dancing Script', cursive">Dancing Script</option>
+                <option value="'Great Vibes', cursive">Great Vibes</option>
+                <option value="'Pacifico', cursive">Pacifico</option>
+                <option value="'Cedarville Cursive', cursive">Cedarville Cursive</option>
+                <option value="'Allura', cursive">Allura</option>
+              </select>
+              <input type="number" id="font-size-input" class="font-size-input" value="14" min="8" max="72">
+              <input type="color" id="font-color-input" class="font-color-input" value="#000000">
             </div>
-            <div class="sign-in-use">
-              <div id="current-sign-display" class="current-sign-display">Sign in use: <span id="current-sign-value">None</span></div>
-            </div>
+
             <div class="page-nav">
               <button id="prev-page-btn" class="nav-btn" title="Previous Page">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"></polyline></svg>

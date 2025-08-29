@@ -154,11 +154,25 @@ class OCRProcessor {
             this.startOcrBtn.disabled = false;
             this.hideLoading();
             this.showToast('PDF loaded successfully! Ready for OCR processing.', 'success');
-        } catch (error) {
-            console.error('Error processing file:', error);
-            this.hideLoading();
-            this.showToast('Error loading PDF. Please try again.', 'error');
+        } catch (err) {
+            console.error('Error during OCR processing:', err);
+            // Provide a more helpful user message when language data is missing or worker failed
+            let userMessage = 'Error during OCR processing. Please try again.';
+            if (err && err.message) {
+                if (err.message.includes('Language data') || err.message.includes('Failed to load language')) {
+                    userMessage = `OCR language data for "${document.querySelector('input[name=\"ocr-language\"]:checked')?.value || 'eng'}" is missing. Please ensure language data is available.`;
+                } else if (err.message.includes('NetworkError') || err.message.includes('fetch')) {
+                    userMessage = 'Network error while fetching OCR resources. Check your connection.';
+                } else {
+                    userMessage = err.message;
+                }
+            }
+
+        this.hideLoading();
+            this.showToast(userMessage);
+            return;
         }
+
     }
 
     showOcrOptions() {
@@ -186,43 +200,157 @@ class OCRProcessor {
         this.updateProgress(0, 'Initializing OCR engine...');
         
         try {
-            // Initialize Tesseract worker
-            const selectedLanguage = document.querySelector('input[name="ocr-language"]:checked').value;
-            this.ocrWorker = await Tesseract.createWorker(selectedLanguage);
-            
+            // Ensure Tesseract is available
+            if (!window.Tesseract) {
+                throw new Error('Tesseract.js is not loaded');
+            }
+
+            const selectedLanguage = document.querySelector('input[name="ocr-language"]:checked')?.value || 'eng';
+            console.log('[OCR] Selected language:', selectedLanguage);
+            if (window && window.ocrDiag) window.ocrDiag('[OCR] Selected language: ' + selectedLanguage);
+
+            // Create worker logger
+            const workerLogger = (m) => {
+                try {
+                    const text = JSON.stringify(m);
+                    console.log('[OCR worker]', m);
+                    if (window && window.ocrDiag) window.ocrDiag('[OCR worker] ' + text);
+                    
+                    if (m && m.status) {
+                        if (m.status === 'recognizing text') {
+                            const pct = Math.round((m.progress || 0) * 100);
+                            this.updateProgress(pct, `Recognizing text... ${pct}%`);
+                        } else if (m.status === 'loading tesseract core') {
+                            this.updateProgress(10, 'Loading Tesseract core...');
+                        } else if (m.status === 'initializing tesseract') {
+                            this.updateProgress(20, 'Initializing Tesseract...');
+                        } else if (m.status === 'loading language traineddata') {
+                            this.updateProgress(30, 'Loading language data...');
+                        } else if (m.status === 'initializing api') {
+                            this.updateProgress(40, 'Initializing API...');
+                        } else {
+                            this.updateProgress(5, m.status);
+                        }
+                    }
+                } catch (e) { 
+                    console.warn('workerLogger failed', e); 
+                }
+            };
+
+            // Use the modern Tesseract.js approach - direct recognition without separate worker creation
+            console.log('[OCR] Using direct Tesseract.recognize approach');
+            if (window && window.ocrDiag) window.ocrDiag('[OCR] Using direct Tesseract.recognize approach');
+
             // Process all pages
             this.pageTexts = [];
             this.extractedText = '';
             let totalConfidence = 0;
             let totalWords = 0;
-            
+
             for (let pageNum = 1; pageNum <= this.totalPages; pageNum++) {
-                this.updateProgress(
-                    ((pageNum - 1) / this.totalPages) * 100,
-                    `Processing page ${pageNum} of ${this.totalPages}...`
-                );
-                
+                const progressBase = ((pageNum - 1) / this.totalPages) * 100;
+                const pageProgress = `Page ${pageNum.toString().padStart(2, '0')} - In progress...`;
+                this.updateProgress(progressBase, pageProgress);
+
                 const pageCanvas = await this.renderPageToCanvas(pageNum);
-                const result = await this.ocrWorker.recognize(pageCanvas);
                 
-                this.pageTexts.push({
-                    page: pageNum,
-                    text: result.data.text,
-                    confidence: result.data.confidence,
-                    words: result.data.words
-                });
-                
-                this.extractedText += `\n--- Page ${pageNum} ---\n${result.data.text}\n`;
-                totalConfidence += result.data.confidence;
-                totalWords += result.data.words.length;
+                console.log('[OCR] Processing page', pageNum, 'canvas dimensions:', pageCanvas.width, 'x', pageCanvas.height);
+                if (window && window.ocrDiag) window.ocrDiag(`[OCR] Processing page ${pageNum} canvas: ${pageCanvas.width}x${pageCanvas.height}`);
+
+                // Use Tesseract.recognize directly - this is more reliable than worker approach
+                let result = null;
+                try {
+                    // Update progress to show recognition in progress
+                    this.updateProgress(progressBase + 10, `Page ${pageNum.toString().padStart(2, '0')} - Recognizing text...`);
+                    
+                    result = await Tesseract.recognize(pageCanvas, selectedLanguage, {
+                        logger: (m) => {
+                            // Enhanced logger with page-specific progress
+                            try {
+                                const text = JSON.stringify(m);
+                                console.log('[OCR worker]', m);
+                                if (window && window.ocrDiag) window.ocrDiag('[OCR worker] ' + text);
+                                
+                                if (m && m.status) {
+                                    if (m.status === 'recognizing text') {
+                                        const pct = Math.round((m.progress || 0) * 100);
+                                        const pageProgressPct = progressBase + (pct * 0.8); // Scale progress within page
+                                        this.updateProgress(pageProgressPct, `Page ${pageNum.toString().padStart(2, '0')} - Recognizing text... ${pct}%`);
+                                    } else if (m.status === 'loading tesseract core') {
+                                        this.updateProgress(progressBase + 5, `Page ${pageNum.toString().padStart(2, '0')} - Loading Tesseract core...`);
+                                    } else if (m.status === 'initializing tesseract') {
+                                        this.updateProgress(progressBase + 10, `Page ${pageNum.toString().padStart(2, '0')} - Initializing Tesseract...`);
+                                    } else if (m.status === 'loading language traineddata') {
+                                        this.updateProgress(progressBase + 15, `Page ${pageNum.toString().padStart(2, '0')} - Loading language data...`);
+                                    } else if (m.status === 'initializing api') {
+                                        this.updateProgress(progressBase + 20, `Page ${pageNum.toString().padStart(2, '0')} - Initializing API...`);
+                                    } else {
+                                        this.updateProgress(progressBase + 5, `Page ${pageNum.toString().padStart(2, '0')} - ${m.status}...`);
+                                    }
+                                }
+                            } catch (e) { 
+                                console.warn('workerLogger failed', e); 
+                            }
+                        },
+                        cacheMethod: 'none' // Disable caching to avoid issues
+                    });
+                } catch (recErr) {
+                    console.error('[OCR] Recognition failed for page', pageNum, ':', recErr);
+                    if (window && window.ocrDiag) window.ocrDiag(`[OCR] Recognition failed for page ${pageNum}: ${recErr.message}`);
+                    
+                    // Try with minimal options as fallback
+                    try {
+                        console.warn('[OCR] Retrying page', pageNum, 'with minimal options');
+                        if (window && window.ocrDiag) window.ocrDiag(`[OCR] Retrying page ${pageNum} with minimal options`);
+                        this.updateProgress(progressBase + 20, `Page ${pageNum.toString().padStart(2, '0')} - Retrying with fallback...`);
+                        result = await Tesseract.recognize(pageCanvas, 'eng');
+                    } catch (fallbackErr) {
+                        console.error('[OCR] Fallback also failed for page', pageNum, ':', fallbackErr);
+                        if (window && window.ocrDiag) window.ocrDiag(`[OCR] Fallback failed for page ${pageNum}: ${fallbackErr.message}`);
+                        throw fallbackErr;
+                    }
+                }
+
+                if (result && result.data) {
+                    this.pageTexts.push({
+                        page: pageNum,
+                        text: result.data.text || '',
+                        confidence: result.data.confidence || 0,
+                        words: result.data.words || []
+                    });
+
+                    this.extractedText += `\n--- Page ${pageNum} ---\n${result.data.text || ''}\n`;
+                    totalConfidence += (result.data.confidence || 0);
+                    totalWords += (result.data.words || []).length;
+
+                    // Show completion for this page
+                    const pageCompletePct = (pageNum / this.totalPages) * 100;
+                    this.updateProgress(pageCompletePct, `Page ${pageNum.toString().padStart(2, '0')} - Completed! (${Math.round(result.data.confidence || 0)}% confidence)`);
+
+                    console.log('[OCR] Page', pageNum, 'completed. Confidence:', result.data.confidence, 'Words:', (result.data.words || []).length);
+                    if (window && window.ocrDiag) window.ocrDiag(`[OCR] Page ${pageNum} completed. Confidence: ${result.data.confidence}, Words: ${(result.data.words || []).length}`);
+                } else {
+                    console.warn('[OCR] No data returned for page', pageNum);
+                    if (window && window.ocrDiag) window.ocrDiag(`[OCR] No data returned for page ${pageNum}`);
+                    
+                    this.pageTexts.push({
+                        page: pageNum,
+                        text: '',
+                        confidence: 0,
+                        words: []
+                    });
+
+                    // Show completion even if no data
+                    const pageCompletePct = (pageNum / this.totalPages) * 100;
+                    this.updateProgress(pageCompletePct, `Page ${pageNum.toString().padStart(2, '0')} - Completed (no text found)`);
+                }
+
+                // Small delay to show the completion message
+                await new Promise(resolve => setTimeout(resolve, 300));
             }
-            
-            // Terminate worker
-            await this.ocrWorker.terminate();
-            this.ocrWorker = null;
-            
+
             // Update results
-            const avgConfidence = totalConfidence / this.totalPages;
+            const avgConfidence = this.totalPages > 0 ? totalConfidence / this.totalPages : 0;
             this.updateResults(this.totalPages, totalWords, avgConfidence);
             
             // Show results
@@ -242,13 +370,21 @@ class OCRProcessor {
             
         } catch (error) {
             console.error('OCR processing error:', error);
+            if (window && window.ocrDiag) window.ocrDiag('[OCR] Processing error: ' + error.message);
             this.hideLoading();
-            this.showToast('Error during OCR processing. Please try again.', 'error');
             
-            if (this.ocrWorker) {
-                await this.ocrWorker.terminate();
-                this.ocrWorker = null;
+            let errorMessage = 'Error during OCR processing: ';
+            if (error.message.includes('Tesseract.js is not loaded')) {
+                errorMessage += 'Tesseract.js library failed to load. Please refresh the page and try again.';
+            } else if (error.message.includes('SetImageFile')) {
+                errorMessage += 'OCR engine initialization failed. This may be due to network issues or browser compatibility. Please try refreshing the page.';
+            } else if (error.message.includes('fetch')) {
+                errorMessage += 'Failed to download language data. Please check your internet connection.';
+            } else {
+                errorMessage += error.message;
             }
+            
+            this.showToast(errorMessage, 'error');
         } finally {
             this.isProcessing = false;
         }
@@ -457,8 +593,11 @@ class OCRProcessor {
 }
 
 // Initialize the OCR processor when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Wait for Tesseract to be available
+    if (window.waitForTesseract) {
+        await window.waitForTesseract();
+    }
     window.ocrProcessor = new OCRProcessor();
+    console.log('✅ OCR Processor initialized successfully');
 });
-
-export default OCRProcessor;
