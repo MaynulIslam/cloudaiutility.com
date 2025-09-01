@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Background Remover - AI-Powered Tool</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="css/background-remover.css">
+</head>
+<body>
+    <header>
+        <a href="../index.html" class="cherry-bomb-one-regular">ToolzzHub.com</a>
+        <nav class="header-nav">
+            <a href="#pro" class="nav-link cherry-bomb-one-regular">Pro</a>
+            <a href="#signup" class="nav-link cherry-bomb-one-regular">Sign up</a>
+            <a href="#signin" class="nav-link cherry-bomb-one-regular">Sign in</a>
+        </nav>
+    </header>
+
+    <main class="background-remover-main">
+        <div class="container">
+            <h1 class="cherry-bomb-one-title">AI Background Remover</h1>
+            <p class="subtitle">Remove backgrounds from your images instantly using AI technology</p>
+
+            <!-- Upload Section -->
+            <section id="upload-section" class="upload-section">
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-content">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7,10 12,15 17,10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </div>
+                        <h3>Upload Your Image</h3>
+                        <p>Drag and drop an image here, or click to browse</p>
+                        <p class="supported-formats">Supported: JPG, JPEG, PNG, WebP, BMP, GIF</p>
+                        <p class="upload-limits">Max size: 10MB | Max dimensions: 4000×4000px</p>
+                        <p class="format-note">Note: HEIC/HEIF files are not supported</p>
+                        <button class="browse-btn" id="browse-btn">Choose Image</button>
+                    </div>
+                    <input type="file" id="file-input" accept="image/jpeg,image/jpg,image/png,image/webp,image/bmp,image/gif" hidden>
+                </div>
+            </section>
+
+            <!-- Processing Section -->
+            <section id="processing-section" class="processing-section" style="display: none;">
+                <div class="processing-container">
+                    <div class="image-comparison">
+                        <div class="image-panel">
+                            <h3>Original</h3>
+                            <div class="image-container">
+                                <img id="original-image" alt="Original image">
+                            </div>
+                        </div>
+                        <div class="arrow-separator">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9,18 15,12 9,6"></polyline>
+                            </svg>
+                        </div>
+                        <div class="image-panel">
+                            <h3>Background Removed</h3>
+                            <div class="image-container">
+                                <canvas id="result-canvas"></canvas>
+                                <div id="processing-overlay" class="processing-overlay">
+                                    <div class="spinner"></div>
+                                    <p>Removing background...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="controls-panel">
+                        <div class="control-group">
+                            <h4>Background Options</h4>
+                            <div class="background-options">
+                                <button class="bg-option active" data-bg="transparent">
+                                    <div class="transparent-preview"></div>
+                                    Transparent
+                                </button>
+                                <button class="bg-option" data-bg="white">
+                                    <div class="color-preview" style="background: white;"></div>
+                                    White
+                                </button>
+                                <button class="bg-option" data-bg="black">
+                                    <div class="color-preview" style="background: black;"></div>
+                                    Black
+                                </button>
+                                <button class="bg-option" data-bg="custom">
+                                    <input type="color" id="custom-color" value="#ffffff">
+                                    Custom
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <h4>Quality Settings</h4>
+                            <div class="quality-controls">
+                                <label for="edge-smoothing">Edge Smoothing:</label>
+                                <input type="range" id="edge-smoothing" min="0" max="10" value="2" step="1">
+                                <span id="smoothing-value">2</span>
+                            </div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button id="remove-bg-btn" class="primary-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                    <path d="M2 17l10 5 10-5"></path>
+                                    <path d="M2 12l10 5 10-5"></path>
+                                </svg>
+                                Remove Background
+                            </button>
+                            <button id="download-btn" class="secondary-btn" style="display: none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7,10 12,15 17,10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                Download Result
+                            </button>
+                            <button id="try-another-btn" class="tertiary-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+                                </svg>
+                                Try Another Image
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Toast Container -->
+        <div id="toast-container" class="toast-container"></div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay" style="display: none;">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <h3>Processing Image</h3>
+                <p>AI is removing the background...</p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 ToolzzHub. All rights reserved.</p>
+        <a href="#privacy">Privacy Policy</a>
+        <a href="#terms">Terms of Service</a>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
+    <script src="js/background-remover.js"></script>
+</body>
+</html>
