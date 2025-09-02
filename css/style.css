@@ -149,6 +149,11 @@ nav, .header-nav, .header-nav-middle, .header-nav-right{
   display: block;
 }
 
+/* Smaller dropdown for Sign in (right navigation) */
+.header-nav-right .dropdown-content {
+  min-width: 140px;
+}
+
 /* logo hover zoom to match nav */
 .site-logo, .cherry-bomb-one-regular{
   display:inline-block; /* ensure transform doesn't affect flow */
