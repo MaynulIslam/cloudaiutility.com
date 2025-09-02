@@ -4,22 +4,71 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Image Tools - Utility App</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=5">
 </head>
 <body>
   <header>
-    <a href="index.html" class="cherry-bomb-one-regular">ToolzzHub.com</a>
-    <nav class="header-nav">
-      <a href="#pro" class="nav-link cherry-bomb-one-regular">Pro</a>
-      <a href="#signup" class="nav-link cherry-bomb-one-regular">Sign up</a>
-      <a href="#signin" class="nav-link cherry-bomb-one-regular">Sign in</a>
+    <a href="index.html" class="site-logo cherry-bomb-one-regular">ToolzzHub.com</a>
+    
+    <!-- Middle navigation with tool categories -->
+    <nav class="header-nav-middle">
+      <div class="nav-dropdown">
+        <a href="pdf-tools.html" class="nav-link cherry-bomb-one-regular">PDF Tools</a>
+        <div class="dropdown-content">
+          <a href="pdf/merge.html">PDF Merge, Split, Compress & Edit</a>
+          <a href="esign/request.html">eSign / Request Signatures</a>
+          <a href="ocr/scan.html">OCR (Scanned PDF Text)</a>
+          <a href="#redact">Redact / Flatten / Watermark</a>
+        </div>
+      </div>
+      
+      <div class="nav-dropdown">
+        <a href="image-tools.html" class="nav-link cherry-bomb-one-regular">Image Tools</a>
+        <div class="dropdown-content">
+          <a href="quick-image-edit/quick_image_edit.html">Quick Image Edit</a>
+          <a href="image/background-remover.html">Background Remover</a>
+          <a href="image/convert.html">Change Format</a>
+        </div>
+      </div>
+      
+      <div class="nav-dropdown">
+        <a href="file-conversion.html" class="nav-link cherry-bomb-one-regular">File Conversion</a>
+        <div class="dropdown-content">
+          <a href="document-conversion/document_conversion.html">Document Conversion</a>
+          <a href="#image-conversion">Image Conversion</a>
+          <a href="#audio-conversion">Audio Conversion</a>
+          <a href="#video-conversion">Video Conversion</a>
+          <a href="#archive-conversion">Archive and Others</a>
+        </div>
+      </div>
+      
+      <div class="nav-dropdown">
+        <a href="qr-code.html" class="nav-link cherry-bomb-one-regular">QR Code Generator</a>
+        <div class="dropdown-content">
+          <a href="qr-code.html#basic">Basic QR Codes</a>
+          <a href="qr-code.html#payment">Payment & Business</a>
+          <a href="qr-code.html#customization">Customization & Design</a>
+          <a href="qr-code.html#advanced">Advanced Options</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Right navigation with account options -->
+    <nav class="header-nav-right">
+      <div class="nav-dropdown">
+        <a href="#signin" class="nav-link cherry-bomb-one-regular">Sign in</a>
+        <div class="dropdown-content">
+          <a href="#signup">Sign up</a>
+          <a href="#pro">Pro</a>
+        </div>
+      </div>
     </nav>
   </header>
   <main>
     <h1 class="cherry-bomb-one-title">Image Tools</h1>
     <section class="card-grid">
       <!-- Quick Image Edit -->
-      <a class="service-link" href="quick-image-edit/index.html" aria-label="Quick Image Edit — open page">
+      <a class="service-link" href="quick-image-edit/quick_image_edit.html" aria-label="Quick Image Edit — open page">
       <div class="service-card">
         <img src="assets/image_edit.gif" alt="Quick Image Edit">
         <h2>Quick Image Edit</h2>
