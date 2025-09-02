@@ -76,7 +76,7 @@ nav, .header-nav{
 .nav-link, nav a, .header-nav .nav-link{
   font-family:'Cherry Bomb One', system-ui, sans-serif;
   color:var(--accent);
-  font-size:1.5rem; /* increased per request */
+  font-size:1.3rem; /* reduced from 1.5rem to make smaller than logo */
   text-decoration:none;
   cursor:default; /* user requested no hover change */
 }
@@ -91,6 +91,50 @@ nav, .header-nav{
   transform:scale(1.2);
   text-decoration:none; /* ensure no underline */
   cursor:default; /* keep cursor unchanged per request */
+}
+
+/* Dropdown Navigation Styles */
+.nav-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: var(--surface);
+  min-width: 280px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  border-radius: var(--radius);
+  z-index: 1000;
+  padding: 0.5rem 0;
+  margin-top: 0.5rem;
+  border: 1px solid rgba(38, 105, 105, 0.1);
+}
+
+.dropdown-content a {
+  color: var(--text);
+  padding: 0.75rem 1.5rem;
+  text-decoration: none;
+  display: block;
+  font-family: 'Segoe UI', Arial, system-ui, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 180ms ease;
+  transform: none; /* override nav link transform */
+}
+
+.dropdown-content a:hover {
+  background-color: var(--bg);
+  color: var(--accent);
+  transform: none; /* prevent scaling on dropdown items */
+  cursor: pointer;
+}
+
+.nav-dropdown:hover .dropdown-content {
+  display: block;
 }
 
 /* logo hover zoom to match nav */
