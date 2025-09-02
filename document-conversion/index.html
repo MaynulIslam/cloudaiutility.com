@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Converter - Convert Text, PDF, Images</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="css/document-converter.css">
+</head>
+<body>
+    <header>
+        <a href="../index.html" class="cherry-bomb-one-regular">ToolzzHub.com</a>
+        <nav class="header-nav">
+            <a href="#pro" class="nav-link cherry-bomb-one-regular">Pro</a>
+            <a href="#signup" class="nav-link cherry-bomb-one-regular">Sign up</a>
+            <a href="#signin" class="nav-link cherry-bomb-one-regular">Sign in</a>
+        </nav>
+    </header>
+
+    <main class="converter-main">
+        <div class="container">
+            <h1 class="cherry-bomb-one-title">Document Converter</h1>
+            <p class="subtitle">Convert between Text, PDF, and Images with privacy-focused client-side processing</p>
+
+            <!-- Supported Conversions Info -->
+            <div class="conversion-info">
+                <div class="conversion-badges">
+                    <div class="conversion-badge">
+                        <span class="badge-icon">📝</span>
+                        <span>Text ↔ PDF</span>
+                    </div>
+                    <div class="conversion-badge">
+                        <span class="badge-icon">🖼️</span>
+                        <span>Images ↔ PDF</span>
+                    </div>
+                    <div class="conversion-badge">
+                        <span class="badge-icon">📄</span>
+                        <span>PDF ↔ Images</span>
+                    </div>
+                    <div class="conversion-badge">
+                        <span class="badge-icon">📊</span>
+                        <span>CSV ↔ Text</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Section -->
+            <section id="upload-section" class="upload-section">
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-content">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7,10 12,15 17,10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </div>
+                        <h3>Upload Your Document</h3>
+                        <p>Drag and drop a file here, or click to browse</p>
+                        <p class="supported-formats">Supported: PDF, TXT, CSV, JPG, PNG, GIF, BMP</p>
+                        <p class="upload-limits">Max size: 50MB | Privacy: Files processed locally</p>
+                        <button class="browse-btn" id="browse-btn">Choose File</button>
+                    </div>
+                    <input type="file" id="file-input" accept=".pdf,.txt,.csv,.jpg,.jpeg,.png,.gif,.bmp" hidden>
+                </div>
+            </section>
+
+            <!-- Conversion Options Section -->
+            <section id="conversion-section" class="conversion-section" style="display: none;">
+                <div class="conversion-container">
+                    <div class="file-preview">
+                        <div class="preview-header">
+                            <h3>Selected File</h3>
+                            <button id="change-file-btn" class="tertiary-btn">Change File</button>
+                        </div>
+                        <div id="file-info" class="file-info"></div>
+                    </div>
+
+                    <div class="conversion-options">
+                        <h3>Convert To</h3>
+                        <div class="format-grid" id="format-grid">
+                            <!-- Dynamic conversion options will be populated here -->
+                        </div>
+
+                        <!-- Settings Panel -->
+                        <div id="settings-panel" class="settings-panel" style="display: none;">
+                            <h4>Conversion Settings</h4>
+                            
+                            <!-- PDF Settings -->
+                            <div id="pdf-settings" class="setting-group" style="display: none;">
+                                <label>
+                                    <input type="checkbox" id="preserve-formatting" checked> Preserve formatting
+                                </label>
+                                <label>
+                                    Page Size:
+                                    <select id="page-size">
+                                        <option value="a4">A4</option>
+                                        <option value="letter">Letter</option>
+                                        <option value="a3">A3</option>
+                                        <option value="legal">Legal</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    Font Size:
+                                    <input type="range" id="font-size" min="8" max="24" value="12" step="1">
+                                    <span id="font-size-value">12px</span>
+                                </label>
+                            </div>
+
+                            <!-- Image Settings -->
+                            <div id="image-settings" class="setting-group" style="display: none;">
+                                <label>
+                                    File Quality:
+                                    <input type="range" id="image-quality" min="60" max="100" value="90" step="5">
+                                    <span id="quality-value">90%</span>
+                                </label>
+                            </div>
+
+                            <!-- Text Settings -->
+                            <div id="text-settings" class="setting-group" style="display: none;">
+                                <label>
+                                    Encoding:
+                                    <select id="text-encoding">
+                                        <option value="utf-8">UTF-8</option>
+                                        <option value="ascii">ASCII</option>
+                                        <option value="iso-8859-1">Latin-1</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="preserve-line-breaks" checked> Preserve line breaks
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="convert-actions">
+                            <button id="convert-btn" class="primary-btn" disabled>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                    <path d="M2 17l10 5 10-5"></path>
+                                    <path d="M2 12l10 5 10-5"></path>
+                                </svg>
+                                Convert Document
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Processing Section -->
+            <section id="processing-section" class="processing-section" style="display: none;">
+                <div class="processing-container">
+                    <h3>Converting Document...</h3>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="progress-fill" class="progress-fill"></div>
+                        </div>
+                        <div class="progress-text">
+                            <span id="progress-message">Preparing conversion...</span>
+                            <span id="progress-percentage">0%</span>
+                        </div>
+                    </div>
+                    <div id="conversion-details" class="conversion-details"></div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="results-section" class="results-section" style="display: none;">
+                <div class="results-container">
+                    <div class="results-header">
+                        <h3>Conversion Complete!</h3>
+                        <div class="conversion-summary" id="conversion-summary"></div>
+                    </div>
+
+                    <div class="result-preview" id="result-preview">
+                        <!-- Preview will be populated here -->
+                    </div>
+
+                    <div class="download-actions">
+                        <button id="download-btn" class="primary-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7,10 12,15 17,10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download Converted File
+                        </button>
+                        <button id="convert-another-btn" class="secondary-btn">Convert Another File</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Toast Container -->
+        <div id="toast-container" class="toast-container"></div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay" style="display: none;">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <h3 id="loading-title">Processing...</h3>
+                <p id="loading-message">Converting your document...</p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 ToolzzHub. All rights reserved.</p>
+        <a href="#privacy">Privacy Policy</a>
+        <a href="#terms">Terms of Service</a>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="js/document-converter.js"></script>
+</body>
+</html>
