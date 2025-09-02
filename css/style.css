@@ -49,6 +49,9 @@ header, .header{
   box-shadow:0 2px 8px rgba(0,0,0,0.04);
 }
 
+/* Provide safe space below header for pages that start with tight sections */
+main { margin-top: 0.5rem; }
+
 /* Support both nav and .header-nav */
 nav, .header-nav, .header-nav-middle, .header-nav-right{
   display:flex;
@@ -93,14 +96,12 @@ nav, .header-nav, .header-nav-middle, .header-nav-right{
   cursor:default; /* user requested no hover change */
 }
 
-/* nav hover zoom (20%) */
+/* nav links behave without hover zoom to avoid overlap with page content */
 .nav-link, nav a, .header-nav .nav-link{
-  display:inline-block; /* allow transform without affecting flow */
-  transform-origin:center;
-  transition:transform 180ms cubic-bezier(.25,.8,.25,1);
+  display:inline-block;
 }
 .nav-link:hover, nav a:hover, .header-nav .nav-link:hover{
-  transform:scale(1.2);
+  transform:none;
   text-decoration:none; /* ensure no underline */
   cursor:default; /* keep cursor unchanged per request */
 }
@@ -154,14 +155,12 @@ nav, .header-nav, .header-nav-middle, .header-nav-right{
   min-width: 100px;
 }
 
-/* logo hover zoom to match nav */
+/* logo without hover zoom (prevents layout overlap) */
 .site-logo, .cherry-bomb-one-regular{
-  display:inline-block; /* ensure transform doesn't affect flow */
-  transform-origin:center;
-  transition:transform 180ms cubic-bezier(.25,.8,.25,1);
+  display:inline-block;
 }
 .site-logo:hover, .cherry-bomb-one-regular:hover{
-  transform:scale(1.2);
+  transform:none;
 }
 .site-logo:hover{cursor:pointer}
 
