@@ -50,10 +50,22 @@ header, .header{
 }
 
 /* Support both nav and .header-nav */
-nav, .header-nav{
+nav, .header-nav, .header-nav-middle, .header-nav-right{
   display:flex;
   gap:1rem;
   align-items:center;
+}
+
+/* Middle navigation should be centered and take up available space */
+.header-nav-middle {
+  flex: 1;
+  justify-content: center;
+  gap: 2rem;
+}
+
+/* Right navigation stays compact */
+.header-nav-right {
+  justify-content: flex-end;
 }
 
 /* Logo / site title (link) */
