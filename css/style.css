@@ -165,11 +165,16 @@ nav, .header-nav, .header-nav-middle, .header-nav-right{
 .site-logo:hover{cursor:pointer}
 
 /* ---------- Container / Page title ---------- */
-.container, main{
+.container{
   max-width:var(--container-width);
   margin:2rem auto;
   padding:0 1rem;
-  flex: 1;
+}
+main{
+  max-width:var(--container-width);
+  margin:2rem auto;
+  padding:0 1rem;
+  flex: 1; /* only main should flex to push footer down */
 }
 .page-title{ text-align:center; margin-bottom:var(--gap);} 
 .cherry-bomb-one-title{

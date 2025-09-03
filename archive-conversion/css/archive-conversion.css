@@ -4,8 +4,9 @@
 main {
     background: var(--bg);
     color: var(--text);
-    min-height: calc(100vh - 120px);
-    padding: 2rem 0;
+    /* Let content define height; add bottom padding so footer never touches cards */
+    min-height: auto;
+    padding: 2rem 0 4rem 0;
 }
 
 .container {

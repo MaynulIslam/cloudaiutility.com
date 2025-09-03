@@ -92,7 +92,7 @@ class ArchiveConverter {
             
             // Progress section
             progressSection: document.getElementById('progress-section'),
-            progressBar: document.getElementById('progress-bar'),
+            progressFill: document.getElementById('progress-fill'),
             progressText: document.getElementById('progress-text'),
             statusText: document.getElementById('status-text'),
             
@@ -400,8 +400,8 @@ class ArchiveConverter {
     }
 
     updateProgress(percentage, message) {
-        if (this.elements.progressBar) {
-            this.elements.progressBar.style.width = `${percentage}%`;
+        if (this.elements.progressFill) {
+            this.elements.progressFill.style.width = `${percentage}%`;
         }
         if (this.elements.progressText) {
             this.elements.progressText.textContent = `${percentage}%`;
