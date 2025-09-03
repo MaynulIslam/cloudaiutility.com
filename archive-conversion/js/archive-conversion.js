@@ -321,8 +321,12 @@ class ArchiveConverter {
                 return await this.convertCsvToExcel(file);
             } else if (inputFormat === 'pdf' && outputFormat === 'text') {
                 return await this.convertPdfToText(file);
-            } else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(inputFormat) && outputFormat === 'files') {
+            } else if (inputFormat === 'zip' && outputFormat === 'files') {
                 return await this.extractArchive(file, inputFormat);
+            } else if (['rar', '7z'].includes(inputFormat) && outputFormat === 'files') {
+                throw new Error('Extraction for RAR/7z is not supported in-browser without additional libraries.');
+            } else if (['tar', 'gz'].includes(inputFormat) && outputFormat === 'files') {
+                throw new Error('Extraction for TAR/GZ not implemented yet.');
             } else {
                 // For unsupported conversions, return the original file with new extension
                 const newName = this.changeFileExtension(file.name, outputFormat);
@@ -393,10 +397,30 @@ class ArchiveConverter {
     }
 
     async extractArchive(file, inputFormat) {
-        // For now, return a text file listing archive contents
-        // In a real implementation, you'd use libraries like JSZip for actual extraction
-        const content = `Archive Contents:\n\nOriginal file: ${file.name}\nFormat: ${inputFormat}\nSize: ${this.formatFileSize(file.size)}\n\nNote: Full extraction requires additional libraries.`;
-        return new Blob([content], { type: 'text/plain' });
+        if (inputFormat !== 'zip') {
+            throw new Error(`Extraction not implemented for ${inputFormat.toUpperCase()}`);
+        }
+
+        // Load the existing ZIP and rebuild a new ZIP containing the extracted files.
+        // This gives the user a clean “_extracted.zip” they can open locally.
+        const sourceZip = await JSZip.loadAsync(file);
+        const outZip = new JSZip();
+
+        const tasks = [];
+        sourceZip.forEach((relativePath, entry) => {
+            if (entry.dir) {
+                outZip.folder(relativePath);
+            } else {
+                tasks.push(
+                    entry.async('uint8array').then((data) => {
+                        outZip.file(relativePath, data);
+                    })
+                );
+            }
+        });
+
+        await Promise.all(tasks);
+        return await outZip.generateAsync({ type: 'blob' });
     }
 
     updateProgress(percentage, message) {
@@ -418,8 +442,8 @@ class ArchiveConverter {
     downloadFile() {
         if (!this.convertedBlob || !this.uploadedFile) return;
         
-        const outputFormat = this.elements.toFormat.value;
-        const newFileName = this.changeFileExtension(this.uploadedFile.name, outputFormat);
+    const outputFormat = this.elements.toFormat.value;
+    const newFileName = this.getDownloadName(this.uploadedFile.name, this.currentFormat, outputFormat);
         
         const link = document.createElement('a');
         link.href = URL.createObjectURL(this.convertedBlob);
@@ -427,6 +451,15 @@ class ArchiveConverter {
         link.click();
         
         setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }
+
+    getDownloadName(originalName, inputFormat, outputFormat) {
+        const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+        if (outputFormat === 'files') {
+            // Bundle extracted files as a Zip archive for download
+            return `${baseName}_extracted.zip`;
+        }
+        return this.changeFileExtension(originalName, outputFormat);
     }
 
     resetInterface() {
