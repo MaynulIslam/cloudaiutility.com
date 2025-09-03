@@ -63,7 +63,7 @@ nav, .header-nav, .header-nav-middle, .header-nav-right{
 .header-nav-middle {
   flex: 1;
   justify-content: center;
-  gap: 2rem;
+  gap: 3rem;
 }
 
 /* Right navigation stays compact */
@@ -196,7 +196,7 @@ main{
   border-radius:var(--radius);
   box-shadow:0 2px 12px rgba(0,0,0,0.07);
   text-align:center;
-  padding: 0.8em 1.6em;
+  padding: 1em 1.6em;
   color:inherit;
   transition:transform 0.25s cubic-bezier(.25,.8,.25,1), box-shadow 0.2s;
   display:flex;
@@ -204,7 +204,7 @@ main{
   align-items:center;
   position:relative;
 }
-.service-card img{width:48px;height:48px;margin-bottom:1rem;transition:transform .35s ease}
+.service-card img{width:60px;height:60px;margin-bottom:1rem;transition:transform .35s ease}
 .service-card h2{
   font-size: 1rem;  /* Adjust this value for card titles */
   margin: 0.5rem 0;

@@ -21,9 +21,9 @@ class QRCore {
     }
 
     /**
-     * Generate QR Code for the 5 basic types
-     * @param {string} data - The data to encode
-     * @param {string} type - url|text|email|phone|sms
+     * Generate QR Code for supported types
+     * @param {string|object} data - The data to encode
+     * @param {string} type - url|text|email|phone|sms|wifi|payments|vcard|event
      * @param {HTMLElement} container - Container to render QR
      */
     async generateQR(data, type, container) {
@@ -107,6 +107,15 @@ class QRCore {
             
             case 'sms':
                 return this.formatSMS(data);
+            
+            case 'payments':
+                return this.formatPayments(data);
+            
+            case 'vcard':
+                return this.formatVCard(data);
+            
+            case 'event':
+                return this.formatEvent(data);
             
             default:
                 return null;
@@ -214,6 +223,123 @@ class QRCore {
     }
 
     /**
+     * Payments (PayPal / Venmo)
+     */
+    formatPayments(p) {
+        if (!p || !p.platform || !p.username) return null;
+        const username = String(p.username).replace(/^@+/, '').trim();
+        if (!username) return null;
+        const amountNum = p.amount !== undefined && p.amount !== '' ? Number(p.amount) : NaN;
+        const amount = !isNaN(amountNum) && amountNum > 0 ? amountNum.toFixed(2) : '';
+        const note = p.note ? p.note.toString().slice(0, 140) : '';
+
+        if (p.platform === 'paypal') {
+            const currency = (p.currency || 'USD').toUpperCase();
+            const base = `https://www.paypal.me/${encodeURIComponent(username)}`;
+            const path = amount ? `/${amount}` : '';
+            const q = amount ? `?currency_code=${encodeURIComponent(currency)}` : '';
+            return base + path + q;
+        }
+        if (p.platform === 'venmo') {
+            const params = new URLSearchParams();
+            params.set('txn', 'pay');
+            if (amount) params.set('amount', amount);
+            if (note) params.set('note', note);
+            if (p.preferApp) {
+                const appParams = new URLSearchParams(params);
+                appParams.set('recipients', username);
+                return `venmo://paycharge?${appParams.toString()}`;
+            }
+            const webParams = new URLSearchParams(params);
+            return `https://venmo.com/${encodeURIComponent(username)}?${webParams.toString()}`;
+        }
+        return null;
+    }
+
+    /**
+     * vCard 3.0
+     */
+    formatVCard(v) {
+        if (!v) return null;
+        const first = (v.first || '').trim();
+        const last = (v.last || '').trim();
+        const fn = (v.fn || `${first} ${last}`.trim()).trim();
+        if (!fn) return null;
+        const E = this.escapeVCard;
+        const lines = [
+            'BEGIN:VCARD',
+            'VERSION:3.0',
+            `N:${E(last)};${E(first)};;;`,
+            `FN:${E(fn)}`
+        ];
+        if (v.org) lines.push(`ORG:${E(v.org)}`);
+        if (v.title) lines.push(`TITLE:${E(v.title)}`);
+        if (v.mobile) lines.push(`TEL;TYPE=CELL:${E(v.mobile)}`);
+        if (v.work) lines.push(`TEL;TYPE=WORK:${E(v.work)}`);
+        if (v.email) lines.push(`EMAIL;TYPE=INTERNET:${E(v.email)}`);
+        if (v.url) lines.push(`URL:${E(v.url)}`);
+        const hasAddr = v.street || v.city || v.region || v.postal || v.country;
+        if (hasAddr) {
+            lines.push(`ADR;TYPE=WORK:;;${E(v.street||'')};${E(v.city||'')};${E(v.region||'')};${E(v.postal||'')};${E(v.country||'')}`);
+        }
+        if (v.note) lines.push(`NOTE:${E(v.note)}`);
+        lines.push('END:VCARD');
+        return lines.join('\r\n');
+    }
+
+    /**
+     * Event (.ics VEVENT)
+     */
+    formatEvent(ev) {
+        if (!ev || !ev.title) return null;
+        const E = this.escapeICS;
+        const lines = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//Utility App//QR//EN',
+            'BEGIN:VEVENT',
+            `SUMMARY:${E(ev.title)}`
+        ];
+        if (ev.allDay) {
+            const sd = this.formatDateYYYYMMDD(ev.startDate);
+            const ed = this.formatDateYYYYMMDD(ev.endDate || ev.startDate);
+            if (!sd) return null;
+            lines.push(`DTSTART;VALUE=DATE:${sd}`);
+            if (ed) lines.push(`DTEND;VALUE=DATE:${ed}`);
+        } else {
+            const s = this.toUTCString(ev.start);
+            const e = this.toUTCString(ev.end);
+            if (!s || !e) return null;
+            lines.push(`DTSTART:${s}`);
+            lines.push(`DTEND:${e}`);
+        }
+        if (ev.location) lines.push(`LOCATION:${E(ev.location)}`);
+        if (ev.desc) lines.push(`DESCRIPTION:${E(ev.desc)}`);
+        lines.push('END:VEVENT');
+        lines.push('END:VCALENDAR');
+        return lines.join('\r\n');
+    }
+
+    // Escaping and date helpers
+    escapeVCard(text = '') { return String(text).replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;'); }
+    escapeICS(text = '') { return String(text).replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;'); }
+    toUTCString(dt) {
+        if (!dt) return null;
+        const d = new Date(dt);
+        if (isNaN(d.getTime())) return null;
+        return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    }
+    formatDateYYYYMMDD(d) {
+        if (!d) return null;
+        const x = new Date(d);
+        if (isNaN(x.getTime())) return null;
+        const y = x.getFullYear();
+        const m = String(x.getMonth() + 1).padStart(2, '0');
+        const da = String(x.getDate()).padStart(2, '0');
+        return `${y}${m}${da}`;
+    }
+
+    /**
      * Update QR options (size, error correction, etc.)
      */
     updateOptions(newOptions) {
@@ -244,6 +370,12 @@ class QRCore {
                     break;
                 case 'pdf':
                     this.downloadPDF(name);
+                    break;
+                case 'vcf':
+                    this.downloadVCardBlob(this.currentData, name);
+                    break;
+                case 'ics':
+                    this.downloadICSBlob(this.currentData, name);
                     break;
                 default:
                     throw new Error('Unsupported format');
@@ -311,6 +443,26 @@ class QRCore {
         link.download = `${filename}.png`;
         link.href = this.currentQR.toDataURL('image/png');
         link.click();
+    }
+
+    // vCard / ICS downloads
+    downloadVCardBlob(vcardText, filename = 'contact') {
+        const blob = new Blob([vcardText], { type: 'text/vcard;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.vcf`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+    downloadICSBlob(icsText, filename = 'event') {
+        const blob = new Blob([icsText], { type: 'text/calendar;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.ics`;
+        a.click();
+        URL.revokeObjectURL(url);
     }
 
     /**

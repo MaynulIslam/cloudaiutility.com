@@ -136,6 +136,35 @@ label {
   margin-bottom: 15px;
 }
 
+/* Simple grids for new tabs */
+.grid-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.grid-three {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .grid-two, .grid-three { grid-template-columns: 1fr; }
+}
+
+.download-inline {
+  margin-left: 12px;
+  background: transparent;
+  color: #007acc;
+  border: 1px dashed #007acc;
+  padding: 10px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.download-inline:hover {
+  background: rgba(0, 122, 204, 0.08);
+}
+
 /* Preview Section */
 .preview-section {
   background: white;

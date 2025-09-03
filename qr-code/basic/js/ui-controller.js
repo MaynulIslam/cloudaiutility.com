@@ -27,8 +27,9 @@ class UIController {
         this.setupEventListeners();
         this.setupQRCallbacks();
         
-        // Switch to default tab and update button state
-        this.switchTab('url');
+    // Switch to first available tab for this page (fallback to 'url')
+    const firstTab = document.querySelector('.tab-btn')?.dataset.tab || 'url';
+    this.switchTab(firstTab);
         this.showInitialState();
         
         console.log('UI Controller initialized successfully');
@@ -63,6 +64,44 @@ class UIController {
             wifiHidden: document.getElementById('wifi-hidden'),
             showPassword: document.getElementById('show-password'),
             
+            // Payments
+            payPlatform: document.getElementById('pay-platform'),
+            payUsername: document.getElementById('pay-username'),
+            payCurrency: document.getElementById('pay-currency'),
+            payAmount: document.getElementById('pay-amount'),
+            payNote: document.getElementById('pay-note'),
+            venmoPreferApp: document.getElementById('venmo-prefer-app'),
+            paypalOnly: document.getElementById('paypal-only'),
+            venmoOnly: document.getElementById('venmo-only'),
+
+            // vCard
+            vcFirst: document.getElementById('vc-first'),
+            vcLast: document.getElementById('vc-last'),
+            vcOrg: document.getElementById('vc-org'),
+            vcTitle: document.getElementById('vc-title'),
+            vcMobile: document.getElementById('vc-mobile'),
+            vcWork: document.getElementById('vc-work'),
+            vcEmail: document.getElementById('vc-email'),
+            vcUrl: document.getElementById('vc-url'),
+            vcStreet: document.getElementById('vc-street'),
+            vcCity: document.getElementById('vc-city'),
+            vcRegion: document.getElementById('vc-region'),
+            vcPostal: document.getElementById('vc-postal'),
+            vcCountry: document.getElementById('vc-country'),
+            vcNote: document.getElementById('vc-note'),
+
+            // Event
+            evTitle: document.getElementById('ev-title'),
+            evAllDay: document.getElementById('ev-all-day'),
+            evStart: document.getElementById('ev-start'),
+            evEnd: document.getElementById('ev-end'),
+            evStartDate: document.getElementById('ev-start-date'),
+            evEndDate: document.getElementById('ev-end-date'),
+            evDateWrap: document.getElementById('ev-date-wrap'),
+            evDatetimeWrap: document.getElementById('ev-datetime-wrap'),
+            evLocation: document.getElementById('ev-location'),
+            evDesc: document.getElementById('ev-desc'),
+
             // Options
             sizeSelect: document.getElementById('size-select'),
             errorCorrectionSelect: document.getElementById('error-correction'),
@@ -72,7 +111,9 @@ class UIController {
             downloadButtons: {
                 png: document.getElementById('download-png'),
                 svg: document.getElementById('download-svg'),
-                pdf: document.getElementById('download-pdf')
+                pdf: document.getElementById('download-pdf'),
+                vcf: document.getElementById('download-vcf'),
+                ics: document.getElementById('download-ics')
             }
         };
     }
@@ -115,6 +156,14 @@ class UIController {
             btn?.addEventListener('click', () => this.downloadQR(format));
         });
 
+    // Payments platform toggles
+    this.elements.payPlatform?.addEventListener('change', () => this.updatePaymentsPlatformUI());
+    this.updatePaymentsPlatformUI();
+
+    // Event all-day toggle
+    this.elements.evAllDay?.addEventListener('change', () => this.updateEventAllDayUI());
+    this.updateEventAllDayUI();
+
         // WiFi password visibility toggle
         this.elements.showPassword?.addEventListener('change', (e) => {
             if (this.elements.wifiPassword) {
@@ -140,7 +189,26 @@ class UIController {
             { element: this.elements.smsPhone, type: 'sms' },
             { element: this.elements.smsMessage, type: 'sms' },
             { element: this.elements.wifiSSID, type: 'wifi' },
-            { element: this.elements.wifiPassword, type: 'wifi' }
+            { element: this.elements.wifiPassword, type: 'wifi' },
+
+            // payments
+            { element: this.elements.payUsername, type: 'payments' },
+            { element: this.elements.payAmount, type: 'payments' },
+            { element: this.elements.payNote, type: 'payments' },
+
+            // vcard
+            { element: this.elements.vcFirst, type: 'vcard' },
+            { element: this.elements.vcLast, type: 'vcard' },
+            { element: this.elements.vcEmail, type: 'vcard' },
+            { element: this.elements.vcMobile, type: 'vcard' },
+            { element: this.elements.vcUrl, type: 'vcard' },
+
+            // event
+            { element: this.elements.evTitle, type: 'event' },
+            { element: this.elements.evStart, type: 'event' },
+            { element: this.elements.evEnd, type: 'event' },
+            { element: this.elements.evStartDate, type: 'event' },
+            { element: this.elements.evEndDate, type: 'event' }
         ];
 
         inputConfigs.forEach(config => {
@@ -327,6 +395,71 @@ class UIController {
                     phone,
                     message: this.elements.smsMessage?.value.trim() || ''
                 };
+
+            case 'payments':
+                const platform = this.elements.payPlatform?.value || 'paypal';
+                const username = this.elements.payUsername?.value.trim().replace(/^@+/, '');
+                if (!username) return null;
+                return {
+                    platform,
+                    username,
+                    currency: this.elements.payCurrency?.value,
+                    amount: this.elements.payAmount?.value,
+                    note: this.elements.payNote?.value,
+                    preferApp: this.elements.venmoPreferApp?.checked || false
+                };
+
+            case 'vcard':
+                const first = this.elements.vcFirst?.value.trim() || '';
+                const last = this.elements.vcLast?.value.trim() || '';
+                const fn = `${first} ${last}`.trim();
+                if (!fn) return null;
+                return {
+                    first, last,
+                    fn,
+                    org: this.elements.vcOrg?.value.trim() || '',
+                    title: this.elements.vcTitle?.value.trim() || '',
+                    mobile: this.elements.vcMobile?.value.trim() || '',
+                    work: this.elements.vcWork?.value.trim() || '',
+                    email: this.elements.vcEmail?.value.trim() || '',
+                    url: this.elements.vcUrl?.value.trim() || '',
+                    street: this.elements.vcStreet?.value.trim() || '',
+                    city: this.elements.vcCity?.value.trim() || '',
+                    region: this.elements.vcRegion?.value.trim() || '',
+                    postal: this.elements.vcPostal?.value.trim() || '',
+                    country: this.elements.vcCountry?.value.trim() || '',
+                    note: this.elements.vcNote?.value.trim() || ''
+                };
+
+            case 'event':
+                const title = this.elements.evTitle?.value.trim();
+                if (!title) return null;
+                const allDay = this.elements.evAllDay?.checked || false;
+                if (allDay) {
+                    const sd = this.elements.evStartDate?.value;
+                    const ed = this.elements.evEndDate?.value || sd;
+                    if (!sd) return null;
+                    return {
+                        title,
+                        allDay: true,
+                        startDate: sd,
+                        endDate: ed,
+                        location: this.elements.evLocation?.value.trim() || '',
+                        desc: this.elements.evDesc?.value.trim() || ''
+                    };
+                } else {
+                    const s = this.elements.evStart?.value;
+                    const e = this.elements.evEnd?.value;
+                    if (!s || !e) return null;
+                    return {
+                        title,
+                        allDay: false,
+                        start: s,
+                        end: e,
+                        location: this.elements.evLocation?.value.trim() || '',
+                        desc: this.elements.evDesc?.value.trim() || ''
+                    };
+                }
             
             default:
                 return null;
@@ -440,14 +573,26 @@ class UIController {
         }
 
         // Tab navigation with numbers
-        if (e.ctrlKey && e.key >= '1' && e.key <= '6') {
+        if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
             e.preventDefault();
-            const tabs = ['url', 'wifi', 'text', 'email', 'phone', 'sms'];
+            const tabs = ['url', 'wifi', 'text', 'email', 'phone', 'sms', 'payments', 'vcard', 'event'];
             const tabIndex = parseInt(e.key) - 1;
             if (tabs[tabIndex]) {
                 this.switchTab(tabs[tabIndex]);
             }
         }
+    }
+
+    // UI helpers for new tabs
+    updatePaymentsPlatformUI() {
+        const isPayPal = this.elements.payPlatform?.value === 'paypal';
+        if (this.elements.paypalOnly) this.elements.paypalOnly.style.display = isPayPal ? 'block' : 'none';
+        if (this.elements.venmoOnly) this.elements.venmoOnly.style.display = !isPayPal ? 'block' : 'none';
+    }
+    updateEventAllDayUI() {
+        const all = this.elements.evAllDay?.checked;
+        if (this.elements.evDateWrap) this.elements.evDateWrap.style.display = all ? 'grid' : 'none';
+        if (this.elements.evDatetimeWrap) this.elements.evDatetimeWrap.style.display = all ? 'none' : 'grid';
     }
 
     /**
