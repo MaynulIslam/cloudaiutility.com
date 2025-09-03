@@ -1,0 +1,550 @@
+/* QR Basic Generator Specific Styles */
+
+.breadcrumb {
+  margin: 20px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.breadcrumb a {
+  color: #007acc;
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.qr-generator-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Input Section */
+.input-section {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e1e5e9;
+}
+
+.tab-navigation {
+  display: flex;
+  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 12px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  white-space: nowrap;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+  color: #007acc;
+  background-color: #f8f9fa;
+}
+
+.tab-btn.active {
+  color: #007acc;
+  border-bottom-color: #007acc;
+  background-color: #f8f9fa;
+}
+
+.tab-content {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tab-content h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.input-field, .select-field {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 10px;
+  transition: border-color 0.3s ease;
+  font-family: inherit;
+}
+
+.input-field:focus, .select-field:focus {
+  outline: none;
+  border-color: #007acc;
+  box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.1);
+}
+
+.input-field::placeholder {
+  color: #999;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.input-help {
+  font-size: 12px;
+  color: #666;
+  margin: 5px 0 15px 0;
+  font-style: italic;
+}
+
+.options-section {
+  margin-top: 25px;
+  padding-top: 25px;
+  border-top: 1px solid #e1e5e9;
+}
+
+.options-section h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.option-group {
+  margin-bottom: 15px;
+}
+
+/* Preview Section */
+.preview-section {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e1e5e9;
+  text-align: center;
+}
+
+.preview-section h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.qr-preview-container {
+  background: #f8f9fa;
+  border: 2px dashed #ddd;
+  border-radius: 12px;
+  padding: 40px 20px;
+  margin-bottom: 25px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#qr-code-display {
+  max-width: 100%;
+  height: auto;
+}
+
+#qr-code-display canvas,
+#qr-code-display img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.preview-help {
+  color: #666;
+  font-size: 14px;
+  margin: 10px 0 0 0;
+  font-style: italic;
+}
+
+.download-section h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.download-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.download-btn {
+  background: #007acc;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.download-btn:hover {
+  background: #005a9b;
+}
+
+.download-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .qr-generator-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 15px;
+  }
+  
+  .input-section,
+  .preview-section {
+    padding: 20px;
+  }
+  
+  .tab-navigation {
+    overflow-x: auto;
+  }
+  
+  .tab-btn {
+    padding: 10px 15px;
+    font-size: 13px;
+  }
+}
+
+/* Error and Success States */
+.input-field.error {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.input-field.success {
+  border-color: #28a745;
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.success-message {
+  color: #28a745;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+/* WiFi Specific Styles */
+.password-toggle {
+  margin: 10px 0;
+}
+
+.password-toggle input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.password-toggle label {
+  font-size: 14px;
+  font-weight: normal;
+  color: #666;
+  cursor: pointer;
+  display: inline;
+}
+
+.checkbox-group {
+  margin: 15px 0;
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-group input[type="checkbox"] {
+  margin-right: 10px;
+  transform: scale(1.1);
+}
+
+.checkbox-group label {
+  font-size: 14px;
+  font-weight: normal;
+  color: #333;
+  cursor: pointer;
+  display: inline;
+  margin: 0;
+}
+
+/* Enhanced Tab Styling */
+.tab-navigation {
+  display: flex;
+  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.tab-navigation::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+/* Usage Statistics Badges */
+.tab-btn::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-left: 8px;
+  opacity: 0.6;
+}
+
+.tab-btn[data-tab="url"]::after {
+  background-color: #28a745; /* Most popular */
+}
+
+.tab-btn[data-tab="wifi"]::after {
+  background-color: #ffc107; /* Second most popular */
+}
+
+/* Enhanced States */
+.empty-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  min-height: 200px;
+  color: #666;
+}
+
+.empty-icon,
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+  opacity: 0.7;
+}
+
+.error-state {
+  color: #dc3545;
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007acc;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Notification Styles */
+.notification {
+  animation: slideIn 0.3s ease, slideOut 0.3s ease 2.7s;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+/* Enhanced Download Buttons */
+.download-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.download-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.download-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.download-btn:hover::before {
+  left: 100%;
+}
+
+/* Keyboard Shortcuts Hint */
+.shortcuts-hint {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 6px;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.shortcuts-hint.show {
+  opacity: 1;
+}
+
+/* Focus Management */
+.input-field:focus,
+.select-field:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 122, 204, 0.15);
+}
+
+/* Success States */
+.tab-content.has-valid-data::before {
+  content: '✓';
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  color: #28a745;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* Make QR Button Container */
+.make-qr-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e1e5e9;
+}
+
+.make-qr-btn {
+  background: linear-gradient(135deg, #007acc, #0056b3);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 122, 204, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.make-qr-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 122, 204, 0.3);
+  background: linear-gradient(135deg, #0056b3, #004085);
+}
+
+.make-qr-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 122, 204, 0.2);
+}
+
+.make-qr-btn:disabled {
+  background: #ccc;
+  color: #666;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Loading state for Make QR button */
+.make-qr-btn.loading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.make-qr-btn.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.make-qr-btn.loading span {
+  opacity: 0;
+}
+
+/* Success state for Make QR button */
+.make-qr-btn.success {
+  background: #28a745;
+  animation: successPulse 0.6s ease;
+}
+
+@keyframes successPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Error state for Make QR button */
+.make-qr-btn.error {
+  background: #dc3545;
+  animation: errorShake 0.6s ease;
+}
+
+@keyframes errorShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basic QR Code Generator - Utility App</title>
+  <link rel="stylesheet" href="../../css/style.css?v=5">
+  <link rel="stylesheet" href="css/qr-basic.css">
+</head>
+<body>
+  <header>
+    <a href="../../index.html" class="site-logo cherry-bomb-one-regular">ToolzzHub.com</a>
+    
+    <!-- Middle navigation with tool categories -->
+    <nav class="header-nav-middle">
+      <div class="nav-dropdown">
+        <a href="../../pdf-tools.html" class="nav-link cherry-bomb-one-regular">PDF Tools</a>
+        <div class="dropdown-content">
+          <a href="../../pdf/merge.html">PDF Merge, Split, Compress & Edit</a>
+          <a href="../../esign/request.html">eSign / Request Signatures</a>
+          <a href="../../ocr/scan.html">OCR (Scanned PDF Text)</a>
+          <a href="#redact">Redact / Flatten / Watermark</a>
+        </div>
+      </div>
+      
+      <div class="nav-dropdown">
+        <a href="../../image-tools.html" class="nav-link cherry-bomb-one-regular">Image Tools</a>
+        <div class="dropdown-content">
+          <a href="../../quick-image-edit/quick_image_edit.html">Quick Image Edit</a>
+          <a href="../../image/background-remover.html">Background Remover</a>
+          <a href="../../image/convert.html">Change Format</a>
+        </div>
+      </div>
+      
+      <div class="nav-dropdown">
+        <a href="../../file-conversion.html" class="nav-link cherry-bomb-one-regular">File Conversion</a>
+        <div class="dropdown-content">
+          <a href="../../document-conversion/document_conversion.html">Document Conversion</a>
+          <a href="../../image-conversion/image_conversion.html">Image Conversion</a>
+        </div>
+      </div>
+      
+      <div class="nav-dropdown">
+        <a href="../../qr-code.html" class="nav-link cherry-bomb-one-regular">QR Code Generator</a>
+        <div class="dropdown-content">
+          <a href="basic-qr.html">Basic QR Codes</a>
+          <a href="../../qr-code.html#payment">Payment & Business</a>
+          <a href="../../qr-code.html#customization">Customization & Design</a>
+          <a href="../../qr-code.html#advanced">Advanced Options</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Right navigation with account options -->
+    <nav class="header-nav-right">
+      <div class="nav-dropdown">
+        <a href="#signin" class="nav-link cherry-bomb-one-regular">Sign in</a>
+        <div class="dropdown-content">
+          <a href="#signup">Sign up</a>
+          <a href="#pro">Pro</a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <div class="breadcrumb">
+      <a href="../../qr-code.html">QR Code Generator</a> > <span>Basic QR Codes</span>
+    </div>
+    
+    <h1 class="cherry-bomb-one-title">Basic QR Code Generator</h1>
+    
+    <div class="qr-generator-container">
+      <!-- Input Section -->
+      <div class="input-section">
+        <div class="tab-navigation">
+          <button class="tab-btn active" data-tab="url">Website URL</button>
+          <button class="tab-btn" data-tab="wifi">WiFi Network</button>
+          <button class="tab-btn" data-tab="text">Text</button>
+          <button class="tab-btn" data-tab="email">Email</button>
+          <button class="tab-btn" data-tab="phone">Phone</button>
+          <button class="tab-btn" data-tab="sms">SMS</button>
+        </div>
+
+        <!-- URL Tab -->
+        <div class="tab-content active" id="url-tab">
+          <h3>Website URL</h3>
+          <label for="url-input">Enter URL:</label>
+          <input type="url" id="url-input" placeholder="https://example.com" class="input-field">
+          <p class="input-help">Enter a valid URL starting with http:// or https://</p>
+          
+          <div class="make-qr-container">
+            <button class="make-qr-btn" data-type="url">Make QR</button>
+          </div>
+        </div>
+
+        <!-- WiFi Tab -->
+        <div class="tab-content" id="wifi-tab">
+          <h3>WiFi Network</h3>
+          <label for="wifi-ssid">Network Name (SSID):</label>
+          <input type="text" id="wifi-ssid" placeholder="MyWiFiNetwork" class="input-field">
+          
+          <label for="wifi-password">Password:</label>
+          <input type="password" id="wifi-password" placeholder="Enter WiFi password" class="input-field">
+          <div class="password-toggle">
+            <input type="checkbox" id="show-password">
+            <label for="show-password">Show password</label>
+          </div>
+          
+          <label for="wifi-security">Security Type:</label>
+          <select id="wifi-security" class="select-field">
+            <option value="WPA">WPA/WPA2</option>
+            <option value="WEP">WEP</option>
+            <option value="nopass">No Password</option>
+          </select>
+          
+          <div class="checkbox-group">
+            <input type="checkbox" id="wifi-hidden">
+            <label for="wifi-hidden">Hidden Network</label>
+          </div>
+          <p class="input-help">Guests can scan to connect automatically</p>
+          
+          <div class="make-qr-container">
+            <button class="make-qr-btn" data-type="wifi">Make QR</button>
+          </div>
+        </div>
+
+        <!-- Text Tab -->
+        <div class="tab-content" id="text-tab">
+          <h3>Plain Text</h3>
+          <label for="text-input">Enter text:</label>
+          <textarea id="text-input" placeholder="Enter any text message..." class="input-field" rows="4"></textarea>
+          <p class="input-help">Maximum 4,296 characters</p>
+          
+          <div class="make-qr-container">
+            <button class="make-qr-btn" data-type="text">Make QR</button>
+          </div>
+        </div>
+
+        <!-- Email Tab -->
+        <div class="tab-content" id="email-tab">
+          <h3>Email</h3>
+          <label for="email-address">Email Address:</label>
+          <input type="email" id="email-address" placeholder="contact@example.com" class="input-field">
+          
+          <label for="email-subject">Subject (optional):</label>
+          <input type="text" id="email-subject" placeholder="Subject line" class="input-field">
+          
+          <label for="email-body">Message (optional):</label>
+          <textarea id="email-body" placeholder="Email message..." class="input-field" rows="3"></textarea>
+          
+          <div class="make-qr-container">
+            <button class="make-qr-btn" data-type="email">Make QR</button>
+          </div>
+        </div>
+
+        <!-- Phone Tab -->
+        <div class="tab-content" id="phone-tab">
+          <h3>Phone Number</h3>
+          <label for="phone-input">Phone Number:</label>
+          <input type="tel" id="phone-input" placeholder="+1234567890" class="input-field">
+          <p class="input-help">Include country code (e.g., +1 for US)</p>
+          
+          <div class="make-qr-container">
+            <button class="make-qr-btn" data-type="phone">Make QR</button>
+          </div>
+        </div>
+
+        <!-- SMS Tab -->
+        <div class="tab-content" id="sms-tab">
+          <h3>SMS Message</h3>
+          <label for="sms-phone">Phone Number:</label>
+          <input type="tel" id="sms-phone" placeholder="+1234567890" class="input-field">
+          
+          <label for="sms-message">Message:</label>
+          <textarea id="sms-message" placeholder="Text message..." class="input-field" rows="3"></textarea>
+          
+          <div class="make-qr-container">
+            <button class="make-qr-btn" data-type="sms">Make QR</button>
+          </div>
+        </div>
+
+        <!-- Options -->
+        <div class="options-section">
+          <h4>QR Code Options</h4>
+          <div class="option-group">
+            <label for="size-select">Size:</label>
+            <select id="size-select" class="select-field">
+              <option value="200">200x200px</option>
+              <option value="300" selected>300x300px</option>
+              <option value="400">400x400px</option>
+              <option value="500">500x500px</option>
+            </select>
+          </div>
+          
+          <div class="option-group">
+            <label for="error-correction">Error Correction:</label>
+            <select id="error-correction" class="select-field">
+              <option value="L">Low (~7%)</option>
+              <option value="M" selected>Medium (~15%)</option>
+              <option value="Q">Quartile (~25%)</option>
+              <option value="H">High (~30%)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview Section -->
+      <div class="preview-section">
+        <h3>Preview</h3>
+        <div class="qr-preview-container">
+          <div id="qr-code-display"></div>
+          <p class="preview-help">QR code will appear here as you type</p>
+        </div>
+        
+        <div class="download-section">
+          <h4>Download</h4>
+          <div class="download-buttons">
+            <button id="download-png" class="download-btn">Download PNG</button>
+            <button id="download-svg" class="download-btn">Download SVG</button>
+            <button id="download-pdf" class="download-btn">Download PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Utility App. All rights reserved.</p>
+    <a href="#privacy">Privacy Policy</a>
+    <a href="#terms">Terms of Service</a>
+  </footer>
+
+  <!-- QR Code Library (non-fatal if fails; SimpleQR is fallback) -->
+  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script>
+    // Secondary CDN if primary fails
+    if (typeof QRCode === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"><\/script>');
+    }
+    // Log availability (either QRCode or SimpleQR later)
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        if (typeof QRCode !== 'undefined') {
+          console.log('✅ QRCode library loaded.');
+        } else {
+          console.warn('⚠️ QRCode CDN not available; will use SimpleQR fallback if present.');
+        }
+      }, 100);
+    });
+  </script>
+  
+  <!-- Core QR Functionality -->
+  <script src="js/simple-qr.js"></script>
+  <script src="js/qr-core.js"></script>
+  <script src="js/ui-controller.js"></script>
+</body>
+</html>
