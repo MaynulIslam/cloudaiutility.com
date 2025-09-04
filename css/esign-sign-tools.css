@@ -204,8 +204,9 @@
   box-shadow: none !important;
   outline: none !important;
   box-sizing: content-box !important;
-  color: #000 !important;
-  font-family: Arial, sans-serif !important;
+  /* Let inline styles control color and font-family */
+  color: inherit;
+  font-family: inherit;
   pointer-events: auto;
   user-select: none;
   white-space: nowrap;

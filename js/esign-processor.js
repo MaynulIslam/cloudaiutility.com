@@ -73,6 +73,9 @@ class ESignProcessor {
 
     // Text-only flow state
     this.selectedFontSize = 20;
+    // Edit state
+    this.isEditing = false;
+    this.activeEdit = null; // { fieldId, textarea, cleanup }
         
         // Other elements
         this.loadingOverlay = document.getElementById('loading-overlay');
@@ -122,7 +125,7 @@ class ESignProcessor {
         }
         
         // Deselection logic when clicking on the background of the pages container
-        if (this.documentPagesContainer) {
+    if (this.documentPagesContainer) {
             this.documentPagesContainer.addEventListener('click', (e) => {
                 // If click is on the container, wrapper, or canvas, but not on a signature field
                 if (e.target === this.documentPagesContainer || e.target.classList.contains('pdf-page-wrapper') || e.target.classList.contains('pdf-page-canvas')) {
@@ -132,6 +135,7 @@ class ESignProcessor {
                             oldElement.classList.remove('selected');
                         }
                         this.selectedField = null;
+            // Do not auto-cancel active edit here; blur will handle finalize
                     }
                 }
             });
@@ -276,6 +280,10 @@ class ESignProcessor {
             
             // Load PDF for preview
             const arrayBuffer = await file.arrayBuffer();
+            // Defensive copy: keep a separate buffer for stamping; PDF.js may transfer/detach the original
+            const source = new Uint8Array(arrayBuffer);
+            this.originalFileBytes = source.slice(); // new TypedArray with its own backing store
+            // Use the original ArrayBuffer for PDF.js preview
             this.pdfDocument = await pdfjsLib.getDocument(arrayBuffer).promise;
             
             this.hideLoading();
@@ -575,6 +583,7 @@ class ESignProcessor {
 
     // Attach click handler to place signatures on this single page
         canvas.addEventListener('click', (event) => {
+            if (this.isEditing) return; // don't add while editing an existing field
             this.addSignatureField(event, pageNum, canvas, overlay);
         });
 
@@ -763,6 +772,7 @@ class ESignProcessor {
                 color: canonicalStyle.color,
                 fontSize: canonicalStyle.fontSize
             };
+            console.log('[DEBUG] Creating field with font:', canonicalStyle.fontFamily);
 
             this.signatureFields.push(field);
             if (textarea.parentNode) textarea.parentNode.removeChild(textarea);
@@ -828,20 +838,17 @@ class ESignProcessor {
             textElement.style.userSelect = 'none';
             textElement.style.whiteSpace = 'nowrap';
             
-            // Apply stored styles
+            // Apply stored styles inline so they persist
             textElement.style.color = field.color || '#000000';
             textElement.style.fontFamily = field.fontFamily || 'Arial';
             textElement.style.fontSize = (field.fontSize || Math.max(10, Math.round(height * 0.35))) + 'px';
             textElement.textContent = field.signText || 'SIGNATURE';
 
-            // Allow clicking to select (keeps existing selection behavior)
+            // Clicking the text enters edit mode (textarea) to modify text or drag it
             textElement.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.selectField(field, textElement);
+                this.startEditExistingField(field, overlay, canvas);
             });
-
-            // Still allow dragging the plain text element to reposition
-            this.makeFieldDraggable(textElement, field, overlay, canvas);
 
             overlay.appendChild(textElement);
 
@@ -862,6 +869,143 @@ class ESignProcessor {
             textElement.style.left = (field.relativeX * canvasRect2.width) + 'px';
             textElement.style.top = (field.relativeY * canvasRect2.height) + 'px';
         });
+
+    }
+
+    startEditExistingField(field, overlay, canvas) {
+        if (this.isEditing) return;
+        this.isEditing = true;
+        this.selectedField = field;
+
+        // Remove current span for this field (if present)
+        const existing = overlay.querySelector(`.signature-text-only[data-field-id="${field.id}"]`);
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+        overlay.style.pointerEvents = 'auto';
+        const canvasRect = canvas.getBoundingClientRect();
+        const x = field.relativeX * canvasRect.width;
+        const y = field.relativeY * canvasRect.height;
+
+        // Create textarea at current location with current text and style
+        const textarea = document.createElement('textarea');
+        textarea.className = 'signature-textarea';
+        textarea.value = field.signText || '';
+        textarea.style.position = 'absolute';
+        textarea.style.left = x + 'px';
+        textarea.style.top = y + 'px';
+        // approximate width/height from current size
+        const approxW = Math.max(120, (field.relativeWidth || 0.15) * canvasRect.width);
+        const approxH = Math.max(36, (field.relativeHeight || 0.06) * canvasRect.height);
+        textarea.style.width = approxW + 'px';
+        textarea.style.height = approxH + 'px';
+        textarea.style.fontFamily = field.fontFamily || 'Arial';
+        textarea.style.fontSize = (field.fontSize || 20) + 'px';
+        textarea.style.color = field.color || '#000000';
+        textarea.style.resize = 'both';
+        textarea.style.padding = '6px 8px';
+        textarea.style.boxSizing = 'border-box';
+        textarea.style.zIndex = '2000';
+        overlay.appendChild(textarea);
+        textarea.focus();
+
+        // Keep controls in sync with this field
+        this.suppressStyleUpdates = true;
+        try {
+            if (this.fontFamilySelect) this.fontFamilySelect.value = textarea.style.fontFamily;
+            if (this.fontSizeInput) this.fontSizeInput.value = parseInt(textarea.style.fontSize, 10) || 20;
+            if (this.fontColorInput) this.fontColorInput.value = field.color || '#000000';
+        } finally {
+            setTimeout(() => { this.suppressStyleUpdates = false; }, 0);
+        }
+
+        // Canonical style and listeners
+        const canonicalStyle = {
+            fontFamily: textarea.style.fontFamily,
+            fontSize: parseInt(textarea.style.fontSize, 10) || 20,
+            color: field.color || '#000000'
+        };
+        const onFontFamilyChange = () => { canonicalStyle.fontFamily = this.fontFamilySelect.value; textarea.style.fontFamily = canonicalStyle.fontFamily; };
+        const onFontSizeChange = () => { canonicalStyle.fontSize = parseInt(this.fontSizeInput.value, 10); textarea.style.fontSize = canonicalStyle.fontSize + 'px'; };
+        const onFontColorChange = () => { canonicalStyle.color = this.fontColorInput.value; textarea.style.color = canonicalStyle.color; };
+        if (this.fontFamilySelect) this.fontFamilySelect.addEventListener('change', onFontFamilyChange);
+        if (this.fontSizeInput) this.fontSizeInput.addEventListener('input', onFontSizeChange);
+        if (this.fontColorInput) this.fontColorInput.addEventListener('input', onFontColorChange);
+
+        // Dragging for textarea
+        let isDragging = false; let dragOffsetX = 0; let dragOffsetY = 0;
+        textarea.addEventListener('mousedown', (e) => {
+            const bounds = textarea.getBoundingClientRect();
+            if (e.clientX > bounds.right - 18 && e.clientY > bounds.bottom - 18) return;
+            isDragging = true;
+            dragOffsetX = e.clientX - bounds.left;
+            dragOffsetY = e.clientY - bounds.top;
+            e.preventDefault(); e.stopPropagation();
+        });
+        const moveHandler = (e) => {
+            if (!isDragging) return;
+            const cRect = canvas.getBoundingClientRect();
+            let newLeft = e.clientX - cRect.left - dragOffsetX;
+            let newTop = e.clientY - cRect.top - dragOffsetY;
+            newLeft = Math.max(0, Math.min(cRect.width - textarea.offsetWidth, newLeft));
+            newTop = Math.max(0, Math.min(cRect.height - textarea.offsetHeight, newTop));
+            textarea.style.left = newLeft + 'px';
+            textarea.style.top = newTop + 'px';
+        };
+        const upHandler = () => { isDragging = false; };
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('mouseup', upHandler);
+
+        const updateFontSizeFromBox = () => {
+            const h = textarea.clientHeight; const fontSize = Math.max(10, Math.round(h * 0.35));
+            textarea.style.fontSize = fontSize + 'px';
+        };
+        textarea.addEventListener('input', updateFontSizeFromBox);
+        textarea.addEventListener('mouseup', updateFontSizeFromBox);
+
+        let isFinalizing = false;
+        const cleanup = () => {
+            document.removeEventListener('mousemove', moveHandler);
+            document.removeEventListener('mouseup', upHandler);
+            if (this.fontFamilySelect) this.fontFamilySelect.removeEventListener('change', onFontFamilyChange);
+            if (this.fontSizeInput) this.fontSizeInput.removeEventListener('input', onFontSizeChange);
+            if (this.fontColorInput) this.fontColorInput.removeEventListener('input', onFontColorChange);
+        };
+
+        const finalize = () => {
+            if (isFinalizing) return;
+            isFinalizing = true;
+            cleanup();
+            const cRect = canvas.getBoundingClientRect();
+            const left = parseFloat(textarea.style.left);
+            const top = parseFloat(textarea.style.top);
+            const w = textarea.offsetWidth; const h = textarea.offsetHeight;
+            field.signText = textarea.value.trim();
+            field.fontFamily = canonicalStyle.fontFamily;
+            field.fontSize = parseInt(textarea.style.fontSize, 10) || canonicalStyle.fontSize;
+            field.color = canonicalStyle.color;
+            console.log('[DEBUG] Updated existing field font to:', field.fontFamily);
+            field.relativeX = Math.max(0, Math.min(1, left / (cRect.width || 1)));
+            field.relativeY = Math.max(0, Math.min(1, top / (cRect.height || 1)));
+            field.relativeWidth = Math.min(1, w / (cRect.width || 1));
+            field.relativeHeight = Math.min(1, h / (cRect.height || 1));
+            try {
+                if (textarea.parentNode) textarea.parentNode.removeChild(textarea);
+            } catch (e) {
+                // Ignore removal race (Enter triggers blur)
+            }
+            overlay.style.pointerEvents = 'none';
+            this.isEditing = false;
+            this.activeEdit = null;
+            // Re-render to reflect updated sizes and style
+            this.renderSignatureFields();
+        };
+
+        textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); finalize(); }
+        });
+        textarea.addEventListener('blur', finalize);
+
+        this.activeEdit = { fieldId: field.id, textarea, cleanup };
     }
 
     selectField(field, element) {
@@ -1007,7 +1151,9 @@ class ESignProcessor {
 
     // Process the original PDF, stamp signature placeholders, and trigger download
     async processAndDownload() {
-        if (!this.uploadedFile || !this.pdfDocument) {
+    // Ensure any active edits are committed before stamping
+    try { await this._finalizePendingEdits(); } catch (_) {}
+    if ((!this.uploadedFile && !this.originalFileBytes) || !this.pdfDocument) {
             this.showToast('No document loaded to process.', 'error');
             return;
         }
@@ -1018,6 +1164,9 @@ class ESignProcessor {
             console.log(`Field ${index}:`, {
                 page: field.page,
                 signText: field.signText,
+                fontFamily: field.fontFamily,
+                fontSize: field.fontSize,
+                color: field.color,
                 relativeX: field.relativeX,
                 relativeY: field.relativeY,
                 relativeWidth: field.relativeWidth,
@@ -1028,34 +1177,76 @@ class ESignProcessor {
         this.showLoading('Applying signatures to document...');
 
         try {
-            // Load pdf-lib dynamically
+            // Load pdf-lib dynamically and register fontkit for custom fonts
             const pdfLib = await import('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.esm.js');
-            const arrayBuffer = await this.uploadedFile.arrayBuffer();
-            const pdfDoc = await pdfLib.PDFDocument.load(arrayBuffer);
+            console.log('[DEBUG] pdf-lib loaded');
+            try {
+                const fontkitMod = await import('https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.es.js');
+                const fontkit = fontkitMod.default || fontkitMod;
+                console.log('[DEBUG] fontkit loaded:', typeof fontkit);
+                // Create a temporary doc to register fontkit or register on the target doc after creation
+                // We'll register on the actual document after loading below
+                var _fontkit = fontkit;
+            } catch (e) {
+                console.warn('Custom font engine not available; custom fonts may fall back.', e);
+            }
+            // Prefer cached bytes; normalize to Uint8Array and clone to ensure not detached
+            let inputBytes = this.originalFileBytes;
+            if (!inputBytes) {
+                const buf = await this.uploadedFile.arrayBuffer();
+                inputBytes = new Uint8Array(buf);
+            }
+            // Clone to avoid using a transferred buffer
+            const safeBytes = inputBytes.slice();
+            const pdfDoc = await pdfLib.PDFDocument.load(safeBytes);
+            console.log('[DEBUG] PDF document loaded');
+            if (typeof _fontkit !== 'undefined' && pdfDoc && pdfDoc.registerFontkit) {
+                try { 
+                    pdfDoc.registerFontkit(_fontkit); 
+                    console.log('[DEBUG] fontkit registered successfully');
+                } catch (e) { 
+                    console.warn('Failed to register fontkit', e); 
+                }
+            } else {
+                console.warn('[DEBUG] fontkit not available or registerFontkit method missing');
+            }
 
-            // Embed custom fonts
+            // Embed custom fonts - simplified approach focusing on reliability
             const fontCache = {};
-            const fontUrls = {
-                "'Dancing Script', cursive": 'https://fonts.gstatic.com/s/dancingscript/v24/If2RXTr6YS-zF4S-kcSWSVi_szLviuEViw.ttf',
-                "'Great Vibes', cursive": 'https://fonts.gstatic.com/s/greatvibes/v14/RWmMoKWR9v4ksMvYJwAbe8c.ttf',
-                "'Pacifico', cursive": 'https://fonts.gstatic.com/s/pacifico/v22/FwZY7-Qmy14u9lezJ-6H6Mk.ttf',
-                "'Cedarville Cursive', cursive": 'https://fonts.gstatic.com/s/cedarvillecursive/v19/yYLr0hG387S_S94DPjY_v2-s-3wA4w.ttf',
-                "'Allura', cursive": 'https://fonts.gstatic.com/s/allura/v16/9oRPNYsQpS4zjuAPjA.ttf'
-            };
-
+            
             async function getFont(fontFamily) {
-                if (fontCache[fontFamily]) return fontCache[fontFamily];
-                if (fontUrls[fontFamily]) {
-                    try {
-                        const fontBytes = await fetch(fontUrls[fontFamily]).then(res => res.arrayBuffer());
-                        const customFont = await pdfDoc.embedFont(fontBytes);
-                        fontCache[fontFamily] = customFont;
-                        return customFont;
-                    } catch (e) {
-                        console.warn(`Failed to load custom font ${fontFamily}. Falling back to Helvetica.`, e);
+                console.log('[DEBUG] getFont called with:', fontFamily);
+                const key = normalizeFamily(fontFamily);
+                console.log('[DEBUG] normalized to:', key);
+                
+                if (fontCache[key]) {
+                    console.log('[DEBUG] returning cached font for:', key);
+                    return fontCache[key];
+                }
+                
+                // For now, map all custom fonts to Helvetica until we can get reliable font URLs
+                // This will at least preserve the text with consistent formatting
+                console.log('[DEBUG] using standard font mapping for:', key);
+                
+                // Map specific font families to PDF standard fonts
+                let standardFont = pdfLib.StandardFonts.Helvetica;
+                if (/times/i.test(key) || /serif/i.test(key)) {
+                    standardFont = pdfLib.StandardFonts.TimesRoman;
+                } else if (/courier/i.test(key) || /mono/i.test(key)) {
+                    standardFont = pdfLib.StandardFonts.Courier;
+                } else if (/helvetica/i.test(key) || /arial/i.test(key) || /sans/i.test(key)) {
+                    standardFont = pdfLib.StandardFonts.Helvetica;
+                } else {
+                    // For script fonts, use Helvetica-Bold to make them more distinctive
+                    if (key.includes('Script') || key.includes('Vibes') || key.includes('Cursive') || key.includes('Allura') || key.includes('Pacifico')) {
+                        standardFont = pdfLib.StandardFonts.HelveticaBold;
                     }
                 }
-                return pdfDoc.embedFont(pdfLib.StandardFonts.Helvetica);
+                
+                const font = await pdfDoc.embedFont(standardFont);
+                fontCache[key] = font;
+                console.log('[DEBUG] embedded standard font:', standardFont, 'for key:', key);
+                return font;
             }
 
             // For each signature field, draw signature text only on the respective page
@@ -1118,6 +1309,28 @@ class ESignProcessor {
             this.hideLoading();
             this.showToast('Failed to process the PDF. See console for details.', 'error');
         }
+    }
+
+    // Finalize any open textarea edits (new placements or re-edits) before saving
+    async _finalizePendingEdits() {
+        // Trigger blur on any active textareas to invoke their finalize handlers
+        const modal = this.modal;
+        if (!modal || modal.style.display === 'none') return;
+        const textareas = Array.from(modal.querySelectorAll('textarea.signature-textarea'));
+        if (textareas.length === 0) return;
+        textareas.forEach(el => {
+            try { el.blur(); } catch (_) {}
+        });
+        // Wait briefly for finalize logic to push updates to signatureFields and cleanup DOM
+        const timeoutMs = 800;
+        const start = Date.now();
+        while (modal.querySelector('textarea.signature-textarea')) {
+            if (Date.now() - start > timeoutMs) break;
+            await new Promise(r => setTimeout(r, 30));
+        }
+        // Reset editing flags if any linger
+        this.isEditing = false;
+        this.activeEdit = null;
     }
 
     resetForm() {
@@ -1259,6 +1472,8 @@ class ESignProcessor {
         const newFontFamily = this.fontFamilySelect.value;
         const newFontSize = parseInt(this.fontSizeInput.value, 10);
         const newColor = this.fontColorInput.value;
+
+        console.log('[DEBUG] updateSelectedFieldStyle called with:', { newFontFamily, newFontSize, newColor });
 
         // Find the field in the main array and update it
         const fieldToUpdate = this.signatureFields.find(f => f.id === this.selectedField.id);
