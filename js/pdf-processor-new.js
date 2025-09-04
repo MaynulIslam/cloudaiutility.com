@@ -12,6 +12,11 @@ class EnhancedPDFProcessor {
     this.maxFileSize = 50 * 1024 * 1024; // 50MB
     this.dragCounter = 0;
     this.mergedPdfData = null;
+  // Zoom/render state
+  this._pdfjsRenderTask = null;
+  this._renderInProgress = false;
+  this._queuedScale = null;
+  this._zoomDebounceTimer = null;
     // Page numbering settings (disabled by default)
     this.pageNumberSettings = {
       enabled: false,
@@ -724,6 +729,16 @@ class EnhancedPDFProcessor {
       // Create content container
       const content = document.createElement('div');
       content.className = 'page-fullscreen-content';
+      // Ensure preview always fits viewport while keeping render quality
+      Object.assign(content.style, {
+        maxWidth: '90vw',
+        maxHeight: '90vh',
+        overflow: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '12px'
+      });
 
       // Create edit button
       const editBtn = document.createElement('button');
@@ -733,6 +748,10 @@ class EnhancedPDFProcessor {
         e.stopPropagation();
         this.enterEditMode(page, content, overlay);
       };
+      // Default inline style; will be positioned absolutely when inside the frame
+      Object.assign(editBtn.style, {
+        cursor: 'pointer'
+      });
 
       // Render high-quality version of the page
       if (page.pdfJSDoc) {
@@ -751,20 +770,55 @@ class EnhancedPDFProcessor {
         };
 
         await pdfPage.render(renderContext).promise;
-        content.appendChild(canvas);
+
+        // Wrap canvas with a square border frame and make it responsive to fit
+        const frame = document.createElement('div');
+        frame.className = 'fullscreen-canvas-frame';
+        Object.assign(frame.style, {
+          border: '2px solid #cbd5e1', // subtle square outline
+          borderRadius: '0px',
+          background: '#ffffff',
+          padding: '8px',
+          position: 'relative', // enable absolute positioning of the edit button
+          maxWidth: '100%',
+          boxSizing: 'border-box'
+        });
+
+        Object.assign(canvas.style, {
+          display: 'block',
+          width: '100%', // fit horizontally within frame/content
+          height: 'auto', // preserve aspect ratio
+          maxHeight: '80vh', // ensure it fits viewport height
+          objectFit: 'contain'
+        });
+
+        frame.appendChild(canvas);
+
+        // Position the edit button at the top-right corner of the frame
+        Object.assign(editBtn.style, {
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          zIndex: '10'
+        });
+        frame.appendChild(editBtn);
+
+        content.appendChild(frame);
       } else {
         content.innerHTML = '<div style="color: #666; font-size: 3rem;">📄</div>';
+        // Fallback: no frame exists, place the edit button within content
+        content.appendChild(editBtn);
       }
-
-      content.appendChild(editBtn);
       overlay.appendChild(content);
       document.body.appendChild(overlay);
 
       // Add event listeners for closing
       const closeFullscreen = () => {
-        document.body.removeChild(overlay);
+        if (overlay && overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
         document.removeEventListener('keydown', handleKeyDown);
-        overlay.removeEventListener('click', closeFullscreen);
+        if (overlay) overlay.removeEventListener('click', closeFullscreen);
       };
 
       const handleKeyDown = (e) => {
@@ -977,13 +1031,15 @@ class EnhancedPDFProcessor {
     let wipeStartX, wipeStartY;
     let selectionBox = null;
 
-    this.interactionLayer.addEventListener('mousedown', (e) => {
+  this.interactionLayer.addEventListener('mousedown', (e) => {
       console.log('Mouse down, edit mode:', this.editMode);
       if (this.editMode === 'wipe-text') {
         console.log('Starting wipe selection');
         isWiping = true;
-        wipeStartX = e.offsetX;
-        wipeStartY = e.offsetY;
+    // Compute coordinates relative to interaction layer to be robust with zoom
+    const rect = this.interactionLayer.getBoundingClientRect();
+    wipeStartX = e.clientX - rect.left;
+    wipeStartY = e.clientY - rect.top;
         
         // Create selection box
         selectionBox = document.createElement('div');
@@ -994,10 +1050,11 @@ class EnhancedPDFProcessor {
       }
     });
 
-    this.interactionLayer.addEventListener('mousemove', (e) => {
+  this.interactionLayer.addEventListener('mousemove', (e) => {
       if (this.editMode === 'wipe-text' && isWiping) {
-        const currentX = e.offsetX;
-        const currentY = e.offsetY;
+    const rectEl = this.interactionLayer.getBoundingClientRect();
+    const currentX = e.clientX - rectEl.left;
+    const currentY = e.clientY - rectEl.top;
         
         const rect = {
           x: Math.min(wipeStartX, currentX),
@@ -1013,7 +1070,7 @@ class EnhancedPDFProcessor {
       }
     });
 
-    this.interactionLayer.addEventListener('mouseup', (e) => {
+  this.interactionLayer.addEventListener('mouseup', (e) => {
       if (this.editMode === 'wipe-text' && isWiping) {
         isWiping = false;
         
@@ -1023,8 +1080,9 @@ class EnhancedPDFProcessor {
           selectionBox = null;
         }
         
-        const wipeEndX = e.offsetX;
-        const wipeEndY = e.offsetY;
+  const rectEl = this.interactionLayer.getBoundingClientRect();
+  const wipeEndX = e.clientX - rectEl.left;
+  const wipeEndY = e.clientY - rectEl.top;
         
         const rect = {
           x: Math.min(wipeStartX, wipeEndX) / this.currentEditScale,
@@ -1046,6 +1104,128 @@ class EnhancedPDFProcessor {
         this.addTextAtPosition(e);
       }
     });
+  }
+
+  // ===== Zoom Handling =====
+  async handleZoom(directionOrFactor) {
+    try {
+      // Determine new scale
+      const step = 0.1;
+      let scale = this.currentEditScale || 1.0;
+      if (directionOrFactor === 'in') scale += step;
+      else if (directionOrFactor === 'out') scale -= step;
+      else if (typeof directionOrFactor === 'number') scale = directionOrFactor;
+      // Clamp
+      scale = Math.max(0.5, Math.min(3.0, scale));
+
+      // No-op if unchanged
+      if (Math.abs(scale - (this.currentEditScale || 1.0)) < 0.001) return;
+
+      // Debounce zoom to prevent overlapping renders
+      this._queuedScale = scale;
+      if (this._zoomDebounceTimer) clearTimeout(this._zoomDebounceTimer);
+      this._zoomDebounceTimer = setTimeout(async () => {
+        // If a render is in progress, let rerenderEditView handle the queued scale
+        if (this._renderInProgress) return;
+        const next = this._queuedScale;
+        this._queuedScale = null;
+        this.currentEditScale = next;
+        const zl = document.getElementById('zoom-level');
+        if (zl) zl.textContent = `${Math.round(this.currentEditScale * 100)}%`;
+        await this.rerenderEditView();
+      }, 80);
+    } catch (err) {
+      console.error('Zoom failed:', err);
+      this.showStatus(`Failed to zoom: ${err.message}`, 'error');
+    }
+  }
+
+  async rerenderEditView() {
+    if (!this.currentPage || !this.currentPage.pdfJSDoc || !this.pdfCanvas || !this.editCanvas || !this.interactionLayer) return;
+
+    const page = await this.currentPage.pdfJSDoc.getPage(this.currentPage.filePageIndex + 1);
+  const viewport = page.getViewport({ scale: this.currentEditScale || 1.0 });
+
+    // Resize canvases
+    this.pdfCanvas.width = viewport.width;
+    this.pdfCanvas.height = viewport.height;
+    this.editCanvas.width = viewport.width;
+    this.editCanvas.height = viewport.height;
+    this.interactionLayer.style.width = `${viewport.width}px`;
+    this.interactionLayer.style.height = `${viewport.height}px`;
+
+    // Render PDF layer with cancellation of previous task
+    const ctx = this.pdfCanvas.getContext('2d');
+    // Cancel any in-flight render
+    if (this._pdfjsRenderTask && this._pdfjsRenderTask.cancel) {
+      try { this._pdfjsRenderTask.cancel(); } catch {}
+    }
+    this._renderInProgress = true;
+    const renderTask = page.render({ canvasContext: ctx, viewport });
+    this._pdfjsRenderTask = renderTask;
+    try {
+      await renderTask.promise;
+    } catch (e) {
+      // Ignore cancellation
+      if (e && String(e).toLowerCase().includes('cancel')) {
+        // noop
+      } else {
+        throw e;
+      }
+    } finally {
+      this._renderInProgress = false;
+      // If a new scale was queued during render, apply it now
+      if (this._queuedScale != null && Math.abs((this._queuedScale) - (this.currentEditScale || 1.0)) > 0.001) {
+        const next = this._queuedScale;
+        this._queuedScale = null;
+        this.currentEditScale = next;
+        const zl = document.getElementById('zoom-level');
+        if (zl) zl.textContent = `${Math.round(this.currentEditScale * 100)}%`;
+        await this.rerenderEditView();
+        return;
+      }
+    }
+
+    // Redraw overlays from base coordinates
+    const ectx = this.editCanvas.getContext('2d');
+    ectx.clearRect(0, 0, this.editCanvas.width, this.editCanvas.height);
+
+    // Redraw text annotations
+    if (Array.isArray(this.textAnnotations)) {
+      for (const ann of this.textAnnotations) {
+        const baseX = (ann.baseX != null) ? ann.baseX : ann.x; // fallback
+        const baseY = (ann.baseY != null) ? ann.baseY : ann.y; // fallback
+        const drawX = baseX * this.currentEditScale;
+        const drawY = baseY * this.currentEditScale;
+        ectx.save();
+        ectx.fillStyle = ann.color || '#000000';
+        const canvasFont = this.mapFontToCanvas(ann.font ? this.mapToolbarFontToStandard(ann.font) : this.currentFont);
+        const fontPx = (ann.fontSize || 16) * this.currentEditScale;
+        ectx.font = `${fontPx}px ${canvasFont}`;
+        ectx.fillText(ann.text, drawX, drawY);
+        ectx.restore();
+        // Keep x/y in sync with current scale for preview and saving fallback
+        ann.x = drawX;
+        ann.y = drawY;
+      }
+    }
+
+    // Redraw wipe annotations (stored in base units)
+    if (Array.isArray(this.wipeAnnotations)) {
+      for (const rect of this.wipeAnnotations) {
+        const sx = rect.x * this.currentEditScale;
+        const sy = rect.y * this.currentEditScale;
+        const sw = rect.width * this.currentEditScale;
+        const sh = rect.height * this.currentEditScale;
+        ectx.save();
+        ectx.fillStyle = '#ffffff';
+        ectx.fillRect(sx, sy, sw, sh);
+        ectx.strokeStyle = '#cccccc';
+        ectx.lineWidth = 1;
+        ectx.strokeRect(sx, sy, sw, sh);
+        ectx.restore();
+      }
+    }
   }
 
   async handleToolClick(tool, button) {
@@ -1540,9 +1720,9 @@ class EnhancedPDFProcessor {
   // ===== Text and Wipe Annotation Functions =====
   
   addTextAtPosition(e) {
-    const rect = this.pdfCanvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+  const rect = this.pdfCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
     
     // Create a text input at the clicked position
     const input = document.createElement('input');
@@ -1565,14 +1745,17 @@ class EnhancedPDFProcessor {
     
     // Handle Enter key to apply text
     input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
+  if (event.key === 'Enter') {
         const text = input.value.trim();
         if (text) {
           // Add text annotation
           const annotation = {
             text: text,
-            x: x,
-            y: y,
+    // Store both display coords and base (unscaled) coords
+    x: x,
+    y: y,
+    baseX: x / (this.currentEditScale || 1.0),
+    baseY: y / (this.currentEditScale || 1.0),
             fontSize: this.currentFontSize,
             font: this.mapToolbarFontToStandard(this.currentFont),
             color: this.currentColor
@@ -1584,8 +1767,8 @@ class EnhancedPDFProcessor {
           const ctx = this.editContext;
           ctx.save();
           ctx.fillStyle = this.currentColor;
-          ctx.font = `${this.currentFontSize}px ${this.mapFontToCanvas(this.currentFont)}`;
-          ctx.fillText(text, x, y);
+      ctx.font = `${this.currentEditScale ? this.currentEditScale * this.currentFontSize : this.currentFontSize}px ${this.mapFontToCanvas(this.currentFont)}`;
+      ctx.fillText(text, x, y);
           ctx.restore();
           
           console.log('Text annotation added:', annotation);
@@ -1617,11 +1800,18 @@ class EnhancedPDFProcessor {
   
   addWipeAnnotation(rect) {
     // Add wipe annotation to the list
+    const scale = this.currentEditScale || 1.0;
     const wipeRect = {
+      // display coords (current scale)
       x: rect.x,
       y: rect.y,
       width: rect.width,
-      height: rect.height
+      height: rect.height,
+      // base coords (unscaled)
+      baseX: rect.x / scale,
+      baseY: rect.y / scale,
+      baseWidth: rect.width / scale,
+      baseHeight: rect.height / scale
     };
     
     this.wipeAnnotations.push(wipeRect);
@@ -1630,7 +1820,7 @@ class EnhancedPDFProcessor {
     const ctx = this.editContext;
     ctx.save();
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+  ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
     ctx.strokeStyle = '#cccccc';
     ctx.lineWidth = 1;
     ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
@@ -1667,10 +1857,11 @@ class EnhancedPDFProcessor {
       // Add text annotations to PDF
       for (const annotation of this.textAnnotations) {
         const pageHeight = page.getHeight();
-        
+        const baseX = (annotation.baseX != null) ? annotation.baseX : annotation.x / (this.currentEditScale || 1.0);
+        const baseY = (annotation.baseY != null) ? annotation.baseY : annotation.y / (this.currentEditScale || 1.0);
         page.drawText(annotation.text, {
-          x: annotation.x * scaleFactor,
-          y: pageHeight - (annotation.y * scaleFactor) - (annotation.fontSize * scaleFactor * 0.2), // Fine-tune baseline
+          x: baseX * scaleFactor,
+          y: pageHeight - (baseY * scaleFactor) - (annotation.fontSize * scaleFactor * 0.2), // Fine-tune baseline
           size: annotation.fontSize * scaleFactor,
           font: await pdfDoc.embedFont(pdfLib.StandardFonts[annotation.font] || pdfLib.StandardFonts.Helvetica),
           color: pdfLib.rgb(
@@ -1685,12 +1876,15 @@ class EnhancedPDFProcessor {
       if (this.wipeAnnotations) {
         for (const rect of this.wipeAnnotations) {
           const pageHeight = page.getHeight();
-          
+          const baseX = (rect.baseX != null) ? rect.baseX : rect.x / (this.currentEditScale || 1.0);
+          const baseY = (rect.baseY != null) ? rect.baseY : rect.y / (this.currentEditScale || 1.0);
+          const baseW = (rect.baseWidth != null) ? rect.baseWidth : rect.width / (this.currentEditScale || 1.0);
+          const baseH = (rect.baseHeight != null) ? rect.baseHeight : rect.height / (this.currentEditScale || 1.0);
           page.drawRectangle({
-            x: rect.x * scaleFactor,
-            y: pageHeight - ((rect.y + rect.height) * scaleFactor),
-            width: rect.width * scaleFactor,
-            height: rect.height * scaleFactor,
+            x: baseX * scaleFactor,
+            y: pageHeight - ((baseY + baseH) * scaleFactor),
+            width: baseW * scaleFactor,
+            height: baseH * scaleFactor,
             color: pdfLib.rgb(1, 1, 1), // White
             opacity: 1,
           });
@@ -1896,13 +2090,15 @@ class EnhancedPDFProcessor {
     }
     
     if (overlay) {
-      document.body.removeChild(overlay);
-      console.log('Overlay removed');
+      if (overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+        console.log('Overlay removed');
+      }
     } else {
       // Find and remove the overlay
       const existingOverlay = document.querySelector('.page-fullscreen-overlay');
-      if (existingOverlay) {
-        document.body.removeChild(existingOverlay);
+      if (existingOverlay && existingOverlay.parentNode) {
+        existingOverlay.parentNode.removeChild(existingOverlay);
         console.log('Existing overlay removed');
       }
     }
