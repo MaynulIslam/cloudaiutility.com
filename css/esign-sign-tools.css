@@ -108,7 +108,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 60vh; /* leave room for header/footer */
+  height: calc(70vh + 20px); /* +20px taller */
   overflow: auto;
 }
 
@@ -343,37 +343,37 @@
 .signature-controls {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-left: 1.5rem;
+  gap: 0.5rem; /* tighter spacing */
+  margin-left: 0.75rem;
   margin-right: auto; /* Pushes subsequent items to the right */
 }
 
 .font-select,
 .font-size-input {
-  padding: 0.4rem 0.6rem;
+  padding: 0.25rem 0.5rem; /* smaller controls */
   border: 1px solid #ccc;
   border-radius: 4px;
   background-color: #fff;
-  font-size: 0.9rem;
+  font-size: 0.85rem; /* smaller text */
 }
 
 .font-select {
-  min-width: 150px; /* Give it some space */
+  min-width: 130px; /* slightly narrower */
 }
 
 .font-size-input {
-  width: 60px; /* Narrower for the number */
+  width: 52px; /* narrower */
 }
 
 .font-color-input {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  width: 32px;
-  height: 32px;
+  width: 24px; /* smaller swatch */
+  height: 24px;
   padding: 0;
   border: 1px solid #ccc;
-  border-radius: 50%; /* Make it a circle */
+  border-radius: 50%;
   cursor: pointer;
   background-color: transparent;
 }

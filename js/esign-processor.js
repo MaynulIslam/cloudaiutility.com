@@ -8,10 +8,13 @@ class ESignProcessor {
         this.selectedField = null;
         this.pdfDocument = null;
         this.currentPage = 1;
-        this.scale = 1.2;
+    this.scale = 1.2;
         this.minScale = 0.5;
         this.maxScale = 3.0;
         this.scaleStep = 0.2;
+    // Rendering state (no interactive zoom)
+    this.currentRenderTask = null;
+    this.isRendering = false;
     this.pageDirection = null; // 'from-right' or 'from-left' for animation
         // When true, control change handlers should not apply changes to fields (used during programmatic updates)
         this.suppressStyleUpdates = false;
@@ -75,9 +78,9 @@ class ESignProcessor {
         this.loadingOverlay = document.getElementById('loading-overlay');
         this.loadingMessage = document.getElementById('loading-message');
         this.toastContainer = document.getElementById('toast-container');
-        // Page navigation controls inside modal
-        this.prevPageBtn = document.getElementById('prev-page-btn');
-        this.nextPageBtn = document.getElementById('next-page-btn');
+    // Page navigation controls inside modal (header nav removed)
+    this.prevPageBtn = null;
+    this.nextPageBtn = null;
         // bottom nav buttons (large red arrows)
         this.sidePrevBtn = document.getElementById('side-prev-btn');
         this.sideNextBtn = document.getElementById('side-next-btn');
@@ -137,11 +140,8 @@ class ESignProcessor {
     // No toolbar or sign dropdown/image events in simplified flow
         
         // Zoom control events
-        if (this.zoomInBtn) this.zoomInBtn.addEventListener('click', () => this.zoomIn());
-        if (this.zoomOutBtn) this.zoomOutBtn.addEventListener('click', () => this.zoomOut());
-        if (this.zoomFitBtn) this.zoomFitBtn.addEventListener('click', () => this.zoomToFit());
-        if (this.prevPageBtn) this.prevPageBtn.addEventListener('click', (e) => { e.stopPropagation(); this.prevPage(); });
-        if (this.nextPageBtn) this.nextPageBtn.addEventListener('click', (e) => { e.stopPropagation(); this.nextPage(); });
+    // Zoom interactions removed for fixed scale
+    // header nav buttons removed; only side buttons remain
         if (this.sidePrevBtn) this.sidePrevBtn.addEventListener('click', (e) => { e.stopPropagation(); this.prevPage(); });
         if (this.sideNextBtn) this.sideNextBtn.addEventListener('click', (e) => { e.stopPropagation(); this.nextPage(); });
         
@@ -175,18 +175,7 @@ class ESignProcessor {
                 this.pageDirection = 'from-right';
                 this.nextPage();
             }
-            if (e.ctrlKey || e.metaKey) {
-                if (e.key === '=' || e.key === '+') {
-                    e.preventDefault();
-                    this.zoomIn();
-                } else if (e.key === '-') {
-                    e.preventDefault();
-                    this.zoomOut();
-                } else if (e.key === '0') {
-                    e.preventDefault();
-                    this.zoomToFit();
-                }
-            }
+            // Disable keyboard zoom shortcuts
         });
         
         // Signer input events
@@ -459,28 +448,39 @@ class ESignProcessor {
         if (this.currentPage > numPages) this.currentPage = numPages;
 
         const pageNum = this.currentPage;
-        const pageWrapper = document.createElement('div');
-        pageWrapper.className = 'pdf-page-wrapper single-page';
+    const pageWrapper = document.createElement('div');
+    pageWrapper.className = 'pdf-page-wrapper single-page';
         pageWrapper.dataset.pageNumber = pageNum;
 
         const pageNumber = document.createElement('div');
         pageNumber.className = 'page-number';
         pageNumber.textContent = `Page ${pageNum} of ${numPages}`;
 
-        const canvas = document.createElement('canvas');
-        canvas.className = 'pdf-page-canvas';
-        canvas.dataset.pageNumber = pageNum;
+    // Create a frame container around the page content (canvas + overlay)
+    const frame = document.createElement('div');
+    frame.className = 'page-frame';
+    frame.style.position = 'relative';
+    frame.style.display = 'inline-block';
+    frame.style.background = '#fff';
+    frame.style.border = '2px solid #d0d7de';
+    frame.style.borderRadius = '8px';
+    frame.style.boxSizing = 'content-box';
 
-        const overlay = document.createElement('div');
-        overlay.className = 'page-signature-overlay';
-        overlay.dataset.pageNumber = pageNum;
+    const canvas = document.createElement('canvas');
+    canvas.className = 'pdf-page-canvas';
+    canvas.dataset.pageNumber = pageNum;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'page-signature-overlay';
+    overlay.dataset.pageNumber = pageNum;
 
     pageWrapper.appendChild(pageNumber);
-        pageWrapper.appendChild(canvas);
-        pageWrapper.appendChild(overlay);
-        this.documentPagesContainer.appendChild(pageWrapper);
+    frame.appendChild(canvas);
+    frame.appendChild(overlay);
+    pageWrapper.appendChild(frame);
+    this.documentPagesContainer.appendChild(pageWrapper);
 
-        // Render the PDF page, but first compute fit-to-container scale
+    // Render the PDF page, but first compute fit-to-container scale
         const page = await this.pdfDocument.getPage(pageNum);
 
         // Get native page size using scale = 1 viewport
@@ -491,16 +491,9 @@ class ESignProcessor {
         let availW = containerRect.width || 800; // fallback
         let availH = containerRect.height || 600; // fallback
 
-        // Reserve some space for header/controls inside the wrapper
-        const header = pageWrapper.querySelector('.page-number');
-        if (header) {
-            const headerRect = header.getBoundingClientRect();
-            // If headerRect.width === 0 (not yet in flow), approximate 30px
-            const headerH = headerRect.height || 28;
-            availH = Math.max(50, availH - headerH - 12);
-        }
+    // We keep the page-number label inside the wrapper (top-left), so no height subtraction is needed
 
-        // Compute fit scale to fit page inside available area
+    // Compute fit scale to fit page inside available area (fixed scale)
         const scaleX = availW / unscaledViewport.width;
         const scaleY = availH / unscaledViewport.height;
         const fitScale = Math.max(this.minScale, Math.min(this.maxScale, Math.min(scaleX, scaleY) * 0.98));
@@ -511,23 +504,37 @@ class ESignProcessor {
         const viewport = page.getViewport({ scale: this.scale });
     canvas.width = Math.round(viewport.width);
     canvas.height = Math.round(viewport.height);
-    // set overlay dimensions to match the rendered canvas
+    // set overlay dimensions to follow the visible canvas size (CSS)
     overlay.style.position = 'absolute';
     overlay.style.left = '0px';
     overlay.style.top = '0px';
-    overlay.style.width = canvas.width + 'px';
-    overlay.style.height = canvas.height + 'px';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
     overlay.style.pointerEvents = 'none';
 
         const ctx = canvas.getContext('2d');
-        const renderContext = {
-            canvasContext: ctx,
-            viewport: viewport
-        };
+        const renderContext = { canvasContext: ctx, viewport };
 
-        await page.render(renderContext).promise;
+        // Cancel any in-flight render and render fresh at this.scale
+        try { if (this.currentRenderTask && this.currentRenderTask.cancel) this.currentRenderTask.cancel(); } catch (_) {}
+        this.isRendering = true;
+        let renderError = null;
+        try {
+            this.currentRenderTask = page.render(renderContext);
+            await this.currentRenderTask.promise;
+        } catch (err) {
+            // Ignore cancellation errors; report others
+            if (!/Rendering cancelled|Task was cancelled/i.test(String(err))) {
+                console.warn('PDF render error:', err);
+                renderError = err;
+            }
+        } finally {
+            this.isRendering = false;
+            this.currentRenderTask = null;
+        }
+        if (renderError) throw renderError;
 
-        // Apply enter animation if pageDirection is set
+    // Apply enter animation if pageDirection is set
         if (this.pageDirection) {
             pageWrapper.classList.add('page-enter', this.pageDirection);
             // Remove animation classes after animation completes
@@ -540,31 +547,24 @@ class ESignProcessor {
 
         // Position side nav buttons (if present) immediately next to the canvas edges
         try {
+            // Move side nav buttons into the frame and align to its left/right edges
             const prevBtn = this.sidePrevBtn || document.getElementById('side-prev-btn');
             const nextBtn = this.sideNextBtn || document.getElementById('side-next-btn');
-            const containerRect = this.documentPagesContainer.getBoundingClientRect();
-            const canvasRect = canvas.getBoundingClientRect();
-
+            if (prevBtn && prevBtn.parentNode !== frame) frame.appendChild(prevBtn);
+            if (nextBtn && nextBtn.parentNode !== frame) frame.appendChild(nextBtn);
             if (prevBtn) {
-                const btnW = prevBtn.offsetWidth || 44;
-                const btnH = prevBtn.offsetHeight || 44;
-                const leftPx = Math.max(4, canvasRect.left - containerRect.left - btnW - 8);
-                const topPx = Math.max(4, canvasRect.top - containerRect.top + (canvasRect.height - btnH) / 2);
                 prevBtn.style.position = 'absolute';
-                prevBtn.style.left = leftPx + 'px';
-                prevBtn.style.top = topPx + 'px';
+                prevBtn.style.left = '8px';
+                prevBtn.style.top = '50%';
+                prevBtn.style.transform = 'translateY(-50%)';
                 prevBtn.style.display = 'inline-flex';
                 prevBtn.style.zIndex = '1200';
             }
-
             if (nextBtn) {
-                const btnW = nextBtn.offsetWidth || 44;
-                const btnH = nextBtn.offsetHeight || 44;
-                const leftPx = Math.min(containerRect.width - btnW - 4, canvasRect.left - containerRect.left + canvasRect.width + 8);
-                const topPx = Math.max(4, canvasRect.top - containerRect.top + (canvasRect.height - btnH) / 2);
                 nextBtn.style.position = 'absolute';
-                nextBtn.style.left = leftPx + 'px';
-                nextBtn.style.top = topPx + 'px';
+                nextBtn.style.right = '8px';
+                nextBtn.style.top = '50%';
+                nextBtn.style.transform = 'translateY(-50%)';
                 nextBtn.style.display = 'inline-flex';
                 nextBtn.style.zIndex = '1200';
             }
@@ -573,7 +573,7 @@ class ESignProcessor {
             console.warn('Could not position side nav buttons:', err);
         }
 
-        // Attach click handler to place signatures on this single page
+    // Attach click handler to place signatures on this single page
         canvas.addEventListener('click', (event) => {
             this.addSignatureField(event, pageNum, canvas, overlay);
         });
@@ -663,7 +663,7 @@ class ESignProcessor {
         this.fontSizeInput.addEventListener('input', onFontSizeChange);
         this.fontColorInput.addEventListener('input', onFontColorChange);
 
-        const cleanupListeners = () => {
+    const cleanupListeners = () => {
             this.fontFamilySelect.removeEventListener('change', onFontFamilyChange);
             this.fontSizeInput.removeEventListener('input', onFontSizeChange);
             this.fontColorInput.removeEventListener('input', onFontColorChange);
@@ -675,7 +675,7 @@ class ESignProcessor {
         let dragOffsetX = 0;
         let dragOffsetY = 0;
 
-        textarea.addEventListener('mousedown', (e) => {
+    textarea.addEventListener('mousedown', (e) => {
             // If mousedown occurs on the resize handle, skip dragging (browser handles resize)
             // Detect if near the bottom-right corner within 14px
             const bounds = textarea.getBoundingClientRect();
@@ -753,10 +753,11 @@ class ESignProcessor {
                 y: top,
                 width: w,
                 height: h,
-                relativeX: left / canvas.width,
-                relativeY: top / canvas.height,
-                relativeWidth: w / canvas.width,
-                relativeHeight: h / canvas.height,
+                // Use on-screen size (CSS pixels) for relative values so drag math matches visuals
+                relativeX: left / rectNow.width,
+                relativeY: top / rectNow.height,
+                relativeWidth: Math.min(1, w / (rectNow.width || 1)),
+                relativeHeight: Math.min(1, h / (rectNow.height || 1)),
                 // Pull style values from canonicalStyle to ensure consistency
                 fontFamily: canonicalStyle.fontFamily,
                 color: canonicalStyle.color,
@@ -795,16 +796,17 @@ class ESignProcessor {
         // Defensive cleanup: remove any legacy boxed templates if present
         document.querySelectorAll('.signature-field').forEach(el => el.remove());
         
-        this.signatureFields.forEach(field => {
+    this.signatureFields.forEach(field => {
             const overlay = document.querySelector(`.page-signature-overlay[data-page-number="${field.page}"]`);
             const canvas = document.querySelector(`.pdf-page-canvas[data-page-number="${field.page}"]`);
             if (!overlay || !canvas) return;
 
-            // Calculate absolute position from relative coordinates
-            const x = field.relativeX * canvas.width;
-            const y = field.relativeY * canvas.height;
-            const width = field.relativeWidth * canvas.width;
-            const height = field.relativeHeight * canvas.height;
+            // Calculate absolute position from relative coordinates using on-screen size
+            const rect = canvas.getBoundingClientRect();
+            const x = field.relativeX * rect.width;
+            const y = field.relativeY * rect.height;
+            const width = field.relativeWidth * rect.width;
+            const height = field.relativeHeight * rect.height;
 
             // Render completely plain text only (no container, no styling) at the saved position
             const textElement = document.createElement('span');
@@ -842,6 +844,23 @@ class ESignProcessor {
             this.makeFieldDraggable(textElement, field, overlay, canvas);
 
             overlay.appendChild(textElement);
+
+            // After mounting, measure actual size and update relative width/height
+            const elRect = textElement.getBoundingClientRect();
+            const canvasRect2 = canvas.getBoundingClientRect();
+            const relW = Math.min(1, (elRect.width || 1) / (canvasRect2.width || 1));
+            const relH = Math.min(1, (elRect.height || 1) / (canvasRect2.height || 1));
+            field.relativeWidth = relW;
+            field.relativeHeight = relH;
+
+            // Clamp position in case width changed significantly from initial textarea width
+            const maxRelX = Math.max(0, 1 - field.relativeWidth);
+            const maxRelY = Math.max(0, 1 - field.relativeHeight);
+            if (field.relativeX > maxRelX) field.relativeX = maxRelX;
+            if (field.relativeY > maxRelY) field.relativeY = maxRelY;
+            // Apply clamped positions
+            textElement.style.left = (field.relativeX * canvasRect2.width) + 'px';
+            textElement.style.top = (field.relativeY * canvasRect2.height) + 'px';
         });
     }
 
@@ -1199,26 +1218,28 @@ class ESignProcessor {
             e.preventDefault();
 
             const canvasRect = canvas.getBoundingClientRect();
-            
-            // Calculate new position relative to canvas
+
+            // Calculate new position relative to canvas (on-screen pixels)
             let newX = e.clientX - canvasRect.left - dragOffsetX;
             let newY = e.clientY - canvasRect.top - dragOffsetY;
-            
-            // Convert to relative coordinates
-            const newRelativeX = newX / canvas.width;
-            const newRelativeY = newY / canvas.height;
-            
-            // Constrain to canvas bounds
-            const constrainedX = Math.max(0, Math.min(1 - field.relativeWidth, newRelativeX));
-            const constrainedY = Math.max(0, Math.min(1 - field.relativeHeight, newRelativeY));
-            
+
+            // Convert to relative coordinates using on-screen width/height
+            const newRelativeX = newX / canvasRect.width;
+            const newRelativeY = newY / canvasRect.height;
+
+            // Constrain to canvas bounds using up-to-date dimensions
+            const maxRelX = Math.max(0, 1 - (field.relativeWidth || 0));
+            const maxRelY = Math.max(0, 1 - (field.relativeHeight || 0));
+            const constrainedX = Math.max(0, Math.min(maxRelX, newRelativeX));
+            const constrainedY = Math.max(0, Math.min(maxRelY, newRelativeY));
+
             field.relativeX = constrainedX;
             field.relativeY = constrainedY;
-            
-            // Update visual position with constrained values
-            const finalX = constrainedX * canvas.width;
-            const finalY = constrainedY * canvas.height;
-            
+
+            // Update visual position with constrained values using on-screen size
+            const finalX = constrainedX * canvasRect.width;
+            const finalY = constrainedY * canvasRect.height;
+
             fieldElement.style.left = finalX + 'px';
             fieldElement.style.top = finalY + 'px';
         });
@@ -1254,99 +1275,27 @@ class ESignProcessor {
                 element.style.fontFamily = newFontFamily;
                 element.style.fontSize = newFontSize + 'px';
                 element.style.color = newColor;
-            }
-        }
-    }
 
-    // Zoom functionality methods
-    zoomIn() {
-        if (this.scale < this.maxScale) {
-            this.scale = Math.min(this.maxScale, this.scale + this.scaleStep);
-            this.updateZoom();
-        }
-    }
-
-    zoomOut() {
-        if (this.scale > this.minScale) {
-            this.scale = Math.max(this.minScale, this.scale - this.scaleStep);
-            this.updateZoom();
-        }
-    }
-
-    zoomToFit() {
-        // Compute a fit-to-container scale for the current page and re-render
-        if (!this.pdfDocument) return;
-
-        const numPages = this.pdfDocument.numPages;
-        if (!this.currentPage || this.currentPage < 1) this.currentPage = 1;
-        if (this.currentPage > numPages) this.currentPage = numPages;
-
-        // Get the page and compute unscaled size
-        this.pdfDocument.getPage(this.currentPage).then(page => {
-            const unscaled = page.getViewport({ scale: 1 });
-            const containerRect = this.documentPagesContainer.getBoundingClientRect();
-            let availW = containerRect.width || 800;
-            let availH = containerRect.height || 600;
-
-            // Account for header space if present
-            const header = this.documentPagesContainer.querySelector('.page-number');
-            if (header) {
-                const headerRect = header.getBoundingClientRect();
-                const headerH = headerRect.height || 28;
-                availH = Math.max(50, availH - headerH - 12);
-            }
-
-            const scaleX = availW / unscaled.width;
-            const scaleY = availH / unscaled.height;
-            const fitScale = Math.max(this.minScale, Math.min(this.maxScale, Math.min(scaleX, scaleY) * 0.98));
-            this.scale = fitScale || this.scale;
-            this.updateZoom();
-        }).catch(err => {
-            console.warn('zoomToFit failed to get page:', err);
-            this.scale = 1.0;
-            this.updateZoom();
-        });
-    }
-
-    updateZoom() {
-        // Store current signature field positions as percentages before re-rendering
-        const fieldsAsPercentages = this.signatureFields.map(field => {
-            const canvas = document.querySelector(`.pdf-page-canvas[data-page-number="${field.page}"]`);
-            if (canvas && canvas.width > 0 && canvas.height > 0) {
-                return {
-                    ...field,
-                    xPercent: (field.x / canvas.width) * 100,
-                    yPercent: (field.y / canvas.height) * 100,
-                    widthPercent: (field.width / canvas.width) * 100,
-                    heightPercent: (field.height / canvas.height) * 100
-                };
-            }
-            return field;
-        });
-
-        this.zoomLevel.textContent = Math.round(this.scale * 100) + '%';
-        
-        // Re-render all pages at new scale
-        this.renderAllPages().then(() => {
-            // Restore signature fields with recalculated positions
-            this.signatureFields = fieldsAsPercentages.map(field => {
-                const canvas = document.querySelector(`.pdf-page-canvas[data-page-number="${field.page}"]`);
-                if (canvas && field.xPercent !== undefined) {
-                    return {
-                        ...field,
-                        x: Math.round((field.xPercent / 100) * canvas.width),
-                        y: Math.round((field.yPercent / 100) * canvas.height),
-                        width: Math.round((field.widthPercent / 100) * canvas.width),
-                        height: Math.round((field.heightPercent / 100) * canvas.height)
-                    };
+                // Recalculate size and clamp position after style change
+                const canvas = document.querySelector(`.pdf-page-canvas[data-page-number="${fieldToUpdate.page}"]`);
+                if (canvas) {
+                    const elRect = element.getBoundingClientRect();
+                    const canvasRect = canvas.getBoundingClientRect();
+                    fieldToUpdate.relativeWidth = Math.min(1, (elRect.width || 1) / (canvasRect.width || 1));
+                    fieldToUpdate.relativeHeight = Math.min(1, (elRect.height || 1) / (canvasRect.height || 1));
+                    const maxRelX = Math.max(0, 1 - fieldToUpdate.relativeWidth);
+                    const maxRelY = Math.max(0, 1 - fieldToUpdate.relativeHeight);
+                    if (fieldToUpdate.relativeX > maxRelX) fieldToUpdate.relativeX = maxRelX;
+                    if (fieldToUpdate.relativeY > maxRelY) fieldToUpdate.relativeY = maxRelY;
+                    // Apply clamped pixel positions
+                    element.style.left = (fieldToUpdate.relativeX * canvasRect.width) + 'px';
+                    element.style.top = (fieldToUpdate.relativeY * canvasRect.height) + 'px';
                 }
-                return field;
-            });
-            
-            // Re-render signature fields at new positions
-            this.renderSignatureFields();
-        });
+            }
+        }
     }
+
+    // Zoom removed: rendering always uses fit-to-container scale when rendering pages
 }
 
 // Initialize the eSign processor when the DOM is loaded

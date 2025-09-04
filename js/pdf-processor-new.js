@@ -864,8 +864,10 @@ class EnhancedPDFProcessor {
       });
 
   // Create canvas container first
-      const canvasContainer = document.createElement('div');
-      canvasContainer.className = 'editor-canvas-container';
+  const canvasContainer = document.createElement('div');
+  canvasContainer.className = 'editor-canvas-container';
+  // Ensure positioned parent for absolute overlays
+  canvasContainer.style.position = 'relative';
 
   // Render PDF page with higher quality
       const pdfPage = await page.pdfJSDoc.getPage(page.filePageIndex + 1);
@@ -1226,6 +1228,205 @@ class EnhancedPDFProcessor {
         ectx.restore();
       }
     }
+
+    // Rebuild text layer overlay if active
+    if (this.editMode === 'edit-text') {
+      await this.buildTextOverlay();
+    }
+  }
+
+  // ===== Edit Text Mode (MVP) =====
+  async enableEditTextMode() {
+    try {
+      // Build overlay the first time
+      await this.buildTextOverlay();
+    } catch (e) {
+      console.error('Failed to enable edit text mode:', e);
+      this.showStatus('Failed to enable text editing', 'error');
+    }
+  }
+
+  disableEditTextMode() {
+    // Remove overlay if present
+    if (this._textOverlay && this._textOverlay.parentNode) {
+      this._textOverlay.parentNode.removeChild(this._textOverlay);
+    }
+    this._textOverlay = null;
+    this._textSpans = null;
+    // Remove active editor if any
+    if (this._textEditor && this._textEditor.parentNode) {
+      this._textEditor.parentNode.removeChild(this._textEditor);
+    }
+    this._textEditor = null;
+  // Re-enable interaction layer
+  if (this.interactionLayer) this.interactionLayer.style.pointerEvents = 'auto';
+  }
+
+  async buildTextOverlay() {
+    if (!this.currentPage || !this.currentPage.pdfJSDoc) return;
+    // Remove previous overlay
+    this.disableEditTextMode();
+
+    const page = await this.currentPage.pdfJSDoc.getPage(this.currentPage.filePageIndex + 1);
+    const viewport = page.getViewport({ scale: this.currentEditScale || 1.0 });
+
+    const overlay = document.createElement('div');
+    overlay.className = 'text-overlay';
+    Object.assign(overlay.style, {
+      position: 'absolute',
+      left: '0',
+      top: '0',
+      width: `${viewport.width}px`,
+      height: `${viewport.height}px`,
+  pointerEvents: 'auto',
+  zIndex: 1000
+    });
+
+    this._textOverlay = overlay;
+    this.canvasContainer.appendChild(overlay);
+
+    // Get text content
+    const textContent = await page.getTextContent();
+    const spans = [];
+
+    for (const item of textContent.items) {
+      // Transform text position to viewport space
+      const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+      const x = tx[4];
+      const y = tx[5];
+      const fontSize = Math.hypot(tx[0], tx[1]);
+
+      // Measure width using item.width adjusted by viewport scale
+      const width = item.width * (this.currentEditScale || 1.0);
+      const height = fontSize;
+
+      const span = document.createElement('span');
+      span.textContent = item.str;
+      span.className = 'text-fragment';
+      Object.assign(span.style, {
+        position: 'absolute',
+        left: `${x}px`,
+        top: `${(y - height)}px`,
+        width: `${width}px`,
+        height: `${height}px`,
+        lineHeight: `${height}px`,
+        whiteSpace: 'nowrap',
+  color: 'transparent', // visually invisible but clickable
+  background: 'transparent',
+        pointerEvents: 'auto',
+        cursor: 'text'
+      });
+
+      span.dataset.baseX = (x / (this.currentEditScale || 1.0)).toString();
+      span.dataset.baseY = ((y - height) / (this.currentEditScale || 1.0)).toString();
+      span.dataset.baseWidth = (width / (this.currentEditScale || 1.0)).toString();
+      span.dataset.baseHeight = (height / (this.currentEditScale || 1.0)).toString();
+      span.dataset.fontSize = (height / (this.currentEditScale || 1.0)).toString();
+      span.dataset.text = item.str;
+      span.dataset.fontName = item.fontName || '';
+
+  span.addEventListener('click', (e) => { e.stopPropagation(); this.startTextEdit(e, span); });
+      overlay.appendChild(span);
+      spans.push(span);
+    }
+
+    this._textSpans = spans;
+  }
+
+  startTextEdit(e, span) {
+    e.stopPropagation();
+    // Remove any existing editor
+    if (this._textEditor && this._textEditor.parentNode) {
+      this._textEditor.parentNode.removeChild(this._textEditor);
+    }
+
+    const baseX = parseFloat(span.dataset.baseX);
+    const baseY = parseFloat(span.dataset.baseY);
+    const baseW = parseFloat(span.dataset.baseWidth);
+    const baseH = parseFloat(span.dataset.baseHeight);
+    const fontSizeBase = parseFloat(span.dataset.fontSize);
+    const scale = this.currentEditScale || 1.0;
+
+    const editor = document.createElement('input');
+    editor.type = 'text';
+    editor.value = span.dataset.text || '';
+    Object.assign(editor.style, {
+      position: 'absolute',
+      left: `${baseX * scale}px`,
+      top: `${baseY * scale}px`,
+      width: `${baseW * scale}px`,
+      height: `${baseH * scale}px`,
+      lineHeight: `${baseH * scale}px`,
+      fontSize: `${fontSizeBase * scale}px`,
+      fontFamily: this.mapFontToCanvas(this.currentFont),
+      border: '2px solid #0078d4',
+      borderRadius: '4px',
+      padding: '0 6px',
+      color: '#111',
+  zIndex: 1001,
+  background: '#fff'
+    });
+
+    this._textEditor = editor;
+    this.canvasContainer.appendChild(editor);
+    editor.focus();
+
+    const commit = async () => {
+      const newText = editor.value;
+      // Wipe the original area (base units)
+      this.addWipeAnnotation({
+        x: baseX * scale,
+        y: baseY * scale,
+        width: baseW * scale,
+        height: baseH * scale
+      });
+
+      // Add a text annotation at the same location using toolbar font/color
+      const annotation = {
+        text: newText,
+        x: baseX * scale,
+        y: (baseY * scale) + (baseH * scale) * 0.8, // baseline adjustment for canvas draw
+        baseX: baseX,
+        baseY: baseY + baseH * 0.8,
+        fontSize: fontSizeBase,
+        font: this.mapToolbarFontToStandard(this.currentFont),
+        color: this.currentColor
+      };
+      this.textAnnotations.push(annotation);
+
+      // Draw on edit canvas immediately
+      const ctx = this.editContext;
+      ctx.save();
+      ctx.fillStyle = this.currentColor;
+      ctx.font = `${fontSizeBase * scale}px ${this.mapFontToCanvas(this.currentFont)}`;
+      ctx.fillText(newText, annotation.x, annotation.y);
+      ctx.restore();
+
+      // Cleanup editor
+      if (editor && editor.parentNode) editor.parentNode.removeChild(editor);
+      this._textEditor = null;
+    };
+
+    editor.addEventListener('keydown', async (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        await commit();
+      } else if (ev.key === 'Escape') {
+        ev.preventDefault();
+        if (editor && editor.parentNode) editor.parentNode.removeChild(editor);
+        this._textEditor = null;
+      }
+    });
+
+    // Click outside cancels
+    const cancelOnOutside = (ev) => {
+      if (ev.target !== editor) {
+        document.removeEventListener('click', cancelOnOutside, true);
+        if (editor && editor.parentNode) editor.parentNode.removeChild(editor);
+        this._textEditor = null;
+      }
+    };
+    setTimeout(() => document.addEventListener('click', cancelOnOutside, true), 50);
   }
 
   async handleToolClick(tool, button) {
@@ -1235,6 +1436,8 @@ class EnhancedPDFProcessor {
     if (tool !== 'page-number') {
       this.destroyPageNumberOverlay();
     }
+  // Ensure any text edit overlay is not active
+  this.disableEditTextMode();
     
     switch (tool) {
       case 'add-text':
@@ -1252,6 +1455,7 @@ class EnhancedPDFProcessor {
         this.interactionLayer.style.cursor = 'crosshair';
         this.showStatus('Click and drag to select area to wipe', 'info');
         break;
+
       
       case 'page-number':
         button.classList.add('active');
@@ -2081,6 +2285,8 @@ class EnhancedPDFProcessor {
     console.log('Exiting edit mode...');
   // Clean up any page-number overlay
   this.destroyPageNumberOverlay();
+  // Clean up any edit-text overlay
+  this.disableEditTextMode();
     
     // Remove toolbar from body
     const toolbar = document.querySelector('.editor-toolbar');
