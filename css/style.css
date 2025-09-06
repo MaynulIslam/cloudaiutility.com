@@ -96,6 +96,20 @@ nav, .header-nav, .header-nav-middle, .header-nav-right{
   cursor:default; /* user requested no hover change */
 }
 
+/* Disabled navigation link styling */
+.nav-link.disabled-link {
+  color: #999999; /* Grey color */
+  cursor: not-allowed;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.nav-link.disabled-link:hover {
+  color: #999999; /* Stay grey on hover */
+  transform: none;
+  cursor: not-allowed;
+}
+
 /* nav links behave without hover zoom to avoid overlap with page content */
 .nav-link, nav a, .header-nav .nav-link{
   display:inline-block;
@@ -159,8 +173,20 @@ nav, .header-nav, .header-nav-middle, .header-nav-right{
   cursor: pointer;
 }
 
-.nav-dropdown:hover .dropdown-content {
+.nav-dropdown:hover .dropdown-content,
+.dropdown-content.show {
   display: block;
+}
+
+/* Disable dropdown hover for disabled sign-in button */
+.nav-dropdown:has(.disabled-link):hover .dropdown-content {
+  display: none;
+}
+
+/* Alternative approach for better browser compatibility */
+.nav-dropdown.disabled-dropdown:hover .dropdown-content,
+.nav-dropdown.disabled-dropdown .dropdown-content.show {
+  display: none !important;
 }
 
 /* Smaller dropdown for Sign in (right navigation) */
