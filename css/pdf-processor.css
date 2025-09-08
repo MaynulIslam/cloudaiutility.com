@@ -1343,13 +1343,7 @@ section h2::before {
   border: 1px solid #fca5a5;
 }
 
-/* Footer */
-footer {
-  text-align: center;
-  padding: 2rem;
-  color: white;
-  opacity: 0.8;
-}
+/* Footer: inherit global site styles; avoid overriding color */
 
 /* Responsive Design */
 @media (max-width: 768px) {

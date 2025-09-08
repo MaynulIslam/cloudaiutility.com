@@ -215,6 +215,11 @@ main{
   padding:0 1rem;
   flex: 1; /* only main should flex to push footer down */
 }
+
+/* If a page wraps main inside a top-level .container, ensure it also flexes */
+body > .container{
+  flex: 1;
+}
 .page-title{ 
   text-align:center; 
   margin-bottom:var(--gap);
