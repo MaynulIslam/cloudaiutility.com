@@ -1213,7 +1213,28 @@ class ESignProcessor {
 
             // Embed custom fonts - simplified approach focusing on reliability
             const fontCache = {};
-            
+
+            // Normalize a CSS font-family string to a canonical key (first family, lowercase, no quotes)
+            function normalizeFamily(fontFamily) {
+                try {
+                    if (!fontFamily) return 'helvetica';
+                    const raw = String(fontFamily).trim();
+                    // Take the first family before comma, strip quotes, lowercase, trim
+                    const first = raw.split(',')[0].replace(/["']/g, '').trim().toLowerCase();
+                    // Map some common aliases to stable names
+                    if (first === 'arial') return 'helvetica';
+                    if (first === 'times new roman') return 'times';
+                    if (first === 'times') return 'times';
+                    if (first === 'courier new') return 'courier';
+                    if (first.includes('script') || first.includes('vibes') || first.includes('cursive') || first.includes('allura') || first.includes('pacifico')) {
+                        return first; // keep for script detection below
+                    }
+                    return first;
+                } catch (_) {
+                    return 'helvetica';
+                }
+            }
+
             async function getFont(fontFamily) {
                 console.log('[DEBUG] getFont called with:', fontFamily);
                 const key = normalizeFamily(fontFamily);
@@ -1238,7 +1259,7 @@ class ESignProcessor {
                     standardFont = pdfLib.StandardFonts.Helvetica;
                 } else {
                     // For script fonts, use Helvetica-Bold to make them more distinctive
-                    if (key.includes('Script') || key.includes('Vibes') || key.includes('Cursive') || key.includes('Allura') || key.includes('Pacifico')) {
+                    if (/script|vibes|cursive|allura|pacifico/i.test(key)) {
                         standardFont = pdfLib.StandardFonts.HelveticaBold;
                     }
                 }
