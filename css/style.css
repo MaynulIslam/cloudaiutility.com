@@ -358,6 +358,15 @@ footer, .site-footer{
 }
 footer a{color:var(--accent);text-decoration:none}
 
+/* ---------- Ad Container ---------- */
+.ad-container{
+  margin: 2rem auto 1rem auto;
+  max-width: var(--container-width);
+  padding: 0 1rem;
+  text-align: center;
+  min-height: 100px; /* Reserve space for ads */
+}
+
 /* ---------- Blur overlay and focus behavior ---------- */
 .blur-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.4);backdrop-filter:blur(4px);z-index:10;pointer-events:none}
 .card-grid.blur-active .service-card:not(.active){filter:blur(2px) grayscale(40%);opacity:0.6;pointer-events:none}
