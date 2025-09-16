@@ -146,7 +146,7 @@
                 <path d="M12 18v-6"></path>
                 <path d="m9 15 3 3 3-3"></path>
               </svg>
-              Edit PDFs
+              Merge PDFs
             </button>
           </div>
         </section>
@@ -163,6 +163,7 @@
                   <label for="download-none">
                     <div class="option-title">No Compression</div>
                     <div class="option-description">Keep original quality</div>
+                    <div class="option-size" id="size-none">Calculating...</div>
                   </label>
                 </div>
                 <div class="radio-option">
@@ -170,6 +171,7 @@
                   <label for="download-standard">
                     <div class="option-title">Standard</div>
                     <div class="option-description">Balanced quality and size</div>
+                    <div class="option-size" id="size-standard">Calculating...</div>
                   </label>
                 </div>
                 <div class="radio-option">
@@ -177,6 +179,7 @@
                   <label for="download-strong">
                     <div class="option-title">Strong</div>
                     <div class="option-description">Maximum compression</div>
+                    <div class="option-size" id="size-strong">Calculating...</div>
                   </label>
                 </div>
               </div>
@@ -249,6 +252,8 @@
     </div>
   </footer>
  
+  <!-- REMOVED: PDF annotation manager - no longer needed -->
+
   <script>
     // Configure PDF.js worker when it's loaded
     function configurePDFJS() {

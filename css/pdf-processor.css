@@ -46,6 +46,62 @@ body {
   line-height: 1.5;
 }
 
+/* PDF Annotation Layer Styles */
+.pdf-annotation-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.pdf-annotation-layer.interactive {
+  pointer-events: auto;
+}
+
+.pdf-ui-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.pdf-text-annotation {
+  position: absolute;
+  cursor: pointer;
+  user-select: none;
+  pointer-events: auto;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.pdf-text-annotation:hover {
+  background-color: rgba(0, 122, 204, 0.1) !important;
+}
+
+.pdf-annotation-selector {
+  position: absolute;
+  border: 2px solid #007acc;
+  background: rgba(0, 122, 204, 0.1);
+  pointer-events: none;
+  z-index: 15;
+}
+
+.pdf-text-editor {
+  position: absolute;
+  background: white;
+  border: 2px solid #007acc;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  min-width: 200px;
+}
+
 /* Toast Notification Styles */
 .toast-container {
   position: fixed;
@@ -1195,6 +1251,13 @@ section h2::before {
   color: #6b7280;
 }
 
+.radio-option .option-size {
+  font-size: 0.875rem;
+  color: #4f46e5;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
 /* Progress Section */
 .progress-section {
   background: white;
@@ -1497,11 +1560,7 @@ input:focus,
   position: relative;
 }
 
-.page-fullscreen-content.editing-mode {
-  max-width: 80vw;
-  max-height: 80vh;
-  cursor: default;
-}
+/* REMOVED: editing-mode class - no longer needed */
 
 .page-fullscreen-content canvas {
   max-width: 100%;
@@ -1510,183 +1569,11 @@ input:focus,
   border-radius: 4px;
 }
 
-/* Edit button - positioned outside and above the modal */
-.edit-page-btn {
-  position: fixed;
-  top: calc(50vh - 20vh - 60px);
-  right: calc(50vw - 17.5vw - 20px);
-  background: #3b82f6;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  z-index: 10001;
-}
+/* REMOVED: edit-page-btn - no longer needed */
 
-.edit-page-btn:hover {
-  background: #2563eb;
-}
+/* REMOVED: edit-page-btn:hover - no longer needed */
 
-/* PDF Editor Interface */
-.pdf-editor-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-.editor-toolbar {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background: white;
-  border-radius: 8px;
-  padding: 0.75rem;
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 10002;
-  max-width: calc(100vw - 40px);
-  flex-wrap: wrap;
-}
-
-.tool-btn {
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
-  padding: 0.4rem 0.6rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.tool-btn:hover {
-  background: #e5e7eb;
-}
-
-.tool-btn.active {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
-}
-
-.tool-btn.save {
-  background: #10b981;
-  color: white;
-  border-color: #10b981;
-}
-
-.tool-btn.save:hover {
-  background: #059669;
-}
-
-.font-controls {
-  display: flex;
-  gap: 0.25rem;
-  align-items: center;
-  padding-left: 0.5rem;
-  border-left: 1px solid #d1d5db;
-}
-
-.font-controls select,
-.font-controls input {
-  padding: 0.25rem 0.4rem;
-  border: 1px solid #d1d5db;
-  border-radius: 3px;
-  font-size: 0.75rem;
-}
-
-.zoom-controls {
-  display: flex;
-  gap: 0.25rem;
-  align-items: center;
-  padding-left: 0.5rem;
-  border-left: 1px solid #d1d5db;
-}
-
-.zoom-btn {
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 0.875rem;
-}
-
-.zoom-btn:hover {
-  background: #e5e7eb;
-}
-
-.editor-canvas-container {
-  flex: 1;
-  position: relative;
-  overflow: auto;
-  border-radius: 4px;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 20px;
-  background: #f8f9fa;
-}
-
-.pdf-layer {
-  position: relative;
-  z-index: 1;
-  display: block;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-radius: 4px;
-  background: white;
-}
-
-.edit-layer {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  pointer-events: none;
-}
-
-.interaction-layer {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 3;
-  cursor: default;
-}
-
-.text-input-box {
-  position: absolute;
-  background: transparent;
-  border: 2px dashed #3b82f6;
-  padding: 4px;
-  min-width: 100px;
-  min-height: 20px;
-  z-index: 4;
-}
-
-.text-input-box input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
-  font-family: inherit;
-  font-size: inherit;
-  color: inherit;
-}
+/* REMOVED: PDF Editor Interface styles - no longer needed for simplified merge tool */
 
 /* Download section styling */
 .download-info {

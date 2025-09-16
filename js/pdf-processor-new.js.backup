@@ -854,9 +854,110 @@ class EnhancedPDFProcessor {
   // REMOVED: handleZoom - no longer needed
   // REMOVED: handleLegacyZoom - no longer needed
 
-  // REMOVED: rerenderEditView - no longer needed
+  async rerenderEditView() {
+    if (!this.currentPage || !this.currentPage.pdfJSDoc || !this.pdfCanvas || !this.editCanvas || !this.interactionLayer) return;
 
-  // REMOVED: enableEditTextMode - no longer needed
+    const page = await this.currentPage.pdfJSDoc.getPage(this.currentPage.filePageIndex + 1);
+  const viewport = page.getViewport({ scale: this.currentEditScale || 1.0 });
+
+    // Resize canvases
+    this.pdfCanvas.width = viewport.width;
+    this.pdfCanvas.height = viewport.height;
+    this.editCanvas.width = viewport.width;
+    this.editCanvas.height = viewport.height;
+    this.interactionLayer.style.width = `${viewport.width}px`;
+    this.interactionLayer.style.height = `${viewport.height}px`;
+
+    // Render PDF layer with cancellation of previous task
+    const ctx = this.pdfCanvas.getContext('2d');
+    // Cancel any in-flight render
+    if (this._pdfjsRenderTask && this._pdfjsRenderTask.cancel) {
+      try { this._pdfjsRenderTask.cancel(); } catch {}
+    }
+    this._renderInProgress = true;
+    const renderTask = page.render({ canvasContext: ctx, viewport });
+    this._pdfjsRenderTask = renderTask;
+    try {
+      await renderTask.promise;
+    } catch (e) {
+      // Ignore cancellation
+      if (e && String(e).toLowerCase().includes('cancel')) {
+        // noop
+      } else {
+        throw e;
+      }
+    } finally {
+      this._renderInProgress = false;
+      // If a new scale was queued during render, apply it now
+      if (this._queuedScale != null && Math.abs((this._queuedScale) - (this.currentEditScale || 1.0)) > 0.001) {
+        const next = this._queuedScale;
+        this._queuedScale = null;
+        this.currentEditScale = next;
+        const zl = document.getElementById('zoom-level');
+        if (zl) zl.textContent = `${Math.round(this.currentEditScale * 100)}%`;
+        await this.rerenderEditView();
+        return;
+      }
+    }
+
+    // Redraw overlays from base coordinates
+    const ectx = this.editCanvas.getContext('2d');
+    ectx.clearRect(0, 0, this.editCanvas.width, this.editCanvas.height);
+
+    // Redraw text annotations
+    if (Array.isArray(this.textAnnotations)) {
+      for (const ann of this.textAnnotations) {
+        const baseX = (ann.baseX != null) ? ann.baseX : ann.x; // fallback
+        const baseY = (ann.baseY != null) ? ann.baseY : ann.y; // fallback
+        const drawX = baseX * this.currentEditScale;
+        const drawY = baseY * this.currentEditScale;
+        ectx.save();
+        ectx.fillStyle = ann.color || '#000000';
+        const canvasFont = this.mapFontToCanvas(ann.font ? this.mapToolbarFontToStandard(ann.font) : this.currentFont);
+        const fontPx = (ann.fontSize || 16) * this.currentEditScale;
+        ectx.font = `${fontPx}px ${canvasFont}`;
+        ectx.textBaseline = 'top'; // Consistent baseline
+        ectx.fillText(ann.text, drawX, drawY);
+        ectx.restore();
+        // Keep x/y in sync with current scale for preview and saving fallback
+        ann.x = drawX;
+        ann.y = drawY;
+      }
+    }
+
+    // Redraw wipe annotations (stored in base units)
+    if (Array.isArray(this.wipeAnnotations)) {
+      for (const rect of this.wipeAnnotations) {
+        const sx = rect.x * this.currentEditScale;
+        const sy = rect.y * this.currentEditScale;
+        const sw = rect.width * this.currentEditScale;
+        const sh = rect.height * this.currentEditScale;
+        ectx.save();
+        ectx.fillStyle = '#ffffff';
+        ectx.fillRect(sx, sy, sw, sh);
+        ectx.strokeStyle = '#cccccc';
+        ectx.lineWidth = 1;
+        ectx.strokeRect(sx, sy, sw, sh);
+        ectx.restore();
+      }
+    }
+
+    // Rebuild text layer overlay if active
+    if (this.editMode === 'edit-text') {
+      await this.buildTextOverlay();
+    }
+  }
+
+  // ===== Edit Text Mode (MVP) =====
+  async enableEditTextMode() {
+    try {
+      // Build overlay the first time
+      await this.buildTextOverlay();
+    } catch (e) {
+      console.error('Failed to enable edit text mode:', e);
+      this.showStatus('Failed to enable text editing', 'error');
+    }
+  }
 
   // REMOVED: disableEditTextMode - no longer needed
 
@@ -873,6 +974,266 @@ class EnhancedPDFProcessor {
   // REMOVED: mapToolbarFontToStandard - no longer needed
 
   // REMOVED: createPageNumberText - no longer needed
+    
+    // Get current toolbar styles
+    const fontFamily = this.mapFontToCanvas(this.currentFont);
+    const fontSize = this.currentFontSize;
+    const color = this.currentColor;
+    
+    // Position relative to canvas
+    const canvasRect = this.pdfCanvas.getBoundingClientRect();
+    const absoluteX = canvasRect.left + canvasX;
+    const absoluteY = canvasRect.top + canvasY;
+    
+    // Style the text element
+    Object.assign(textElement.style, {
+      position: 'absolute',
+      left: (absoluteX - canvasRect.left) + 'px',
+      top: (absoluteY - canvasRect.top) + 'px',
+      fontFamily: fontFamily,
+      fontSize: fontSize + 'px',
+      color: color,
+      background: 'rgba(255, 255, 255, 0.9)',
+      border: '2px dashed #0078d4',
+      padding: '4px 8px',
+      borderRadius: '4px',
+      zIndex: 60,
+      cursor: 'text',
+      outline: 'none',
+      minWidth: '30px',
+      textAlign: 'center',
+      whiteSpace: 'nowrap',
+      userSelect: 'text'
+    });
+    
+    // Add drag handle border for visual feedback
+    const dragHandle = document.createElement('div');
+    dragHandle.style.cssText = `
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      border: 2px solid transparent;
+      border-radius: 4px;
+      pointer-events: none;
+      z-index: -1;
+    `;
+    textElement.appendChild(dragHandle);
+    
+    // Add to the canvas container or modal
+    const container = this.canvasContainer;
+    container.appendChild(textElement);
+    
+    // Store reference for cleanup
+    this._currentPageNumberText = textElement;
+    
+    // Make draggable
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    let isEditing = true; // Start in edit mode
+    
+    // Check if mouse is near border for drag cursor
+    const isNearBorder = (e, element) => {
+      const rect = element.getBoundingClientRect();
+      const borderWidth = 8; // Pixels from edge to show drag cursor
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      return (x <= borderWidth || x >= rect.width - borderWidth ||
+              y <= borderWidth || y >= rect.height - borderWidth);
+    };
+    
+    // Update cursor based on mouse position
+    const updateCursor = (e) => {
+      if (isEditing) {
+        if (isNearBorder(e, textElement)) {
+          textElement.style.cursor = 'move';
+        } else {
+          textElement.style.cursor = 'text';
+        }
+      }
+    };
+    
+    const startDrag = (e) => {
+      // Only start drag if near border or not in edit mode
+      if (isEditing && !isNearBorder(e, textElement)) {
+        return;
+      }
+      
+      isDragging = true;
+      const rect = textElement.getBoundingClientRect();
+      dragOffsetX = e.clientX - rect.left;
+      dragOffsetY = e.clientY - rect.top;
+      textElement.style.cursor = 'grabbing';
+      textElement.contentEditable = 'false'; // Disable editing while dragging
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    
+    const doDrag = (e) => {
+      if (!isDragging) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const newX = Math.max(0, Math.min(containerRect.width - textElement.offsetWidth, e.clientX - containerRect.left - dragOffsetX));
+      const newY = Math.max(0, Math.min(containerRect.height - textElement.offsetHeight, e.clientY - containerRect.top - dragOffsetY));
+      
+      textElement.style.left = newX + 'px';
+      textElement.style.top = newY + 'px';
+      
+      // Update normalized coordinates
+      const canvasRect = this.pdfCanvas.getBoundingClientRect();
+      const textRect = textElement.getBoundingClientRect();
+      const centerX = textRect.left + textRect.width / 2;
+      const centerY = textRect.top + textRect.height / 2;
+      
+      if (centerX >= canvasRect.left && centerX <= canvasRect.right &&
+          centerY >= canvasRect.top && centerY <= canvasRect.bottom) {
+        normX = (centerX - canvasRect.left) / canvasRect.width;
+        normY = (centerY - canvasRect.top) / canvasRect.height;
+      }
+    };
+    
+    const endDrag = () => {
+      if (isDragging) {
+        isDragging = false;
+        textElement.contentEditable = 'true'; // Re-enable editing
+        textElement.style.cursor = 'text';
+      }
+    };
+    
+    // Mouse move handler for cursor updates
+    textElement.addEventListener('mousemove', updateCursor);
+    
+    // Mouse move handler for cursor updates
+    textElement.addEventListener('mousemove', updateCursor);
+    
+    // Click handling - focus for editing, don't interfere with toolbar
+    textElement.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!isNearBorder(e, textElement)) {
+        textElement.focus();
+        // Select all text for easy editing
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(textElement);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    });
+    
+    // Add drag event listeners
+    textElement.addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', endDrag);
+    
+    // Store references for cleanup
+    textElement._doDrag = doDrag;
+    textElement._endDrag = endDrag;
+    
+    // Focus and select text initially
+    textElement.focus();
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(textElement);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    
+    // Handle Enter key to apply the page number
+    const applyPageNumber = () => {
+      const text = textElement.textContent.trim();
+      const pageNumber = parseInt(text);
+      
+      if (isNaN(pageNumber) || pageNumber < 0) {
+        this.showStatus('Please enter a valid page number', 'error');
+        textElement.focus();
+        return;
+      }
+      
+      // Save settings using current toolbar styles
+      const fontStandard = this.mapToolbarFontToStandard(this.currentFont);
+      this.pageNumberSettings = {
+        enabled: true,
+        mode: 'manual',
+        startNumber: pageNumber,
+        font: fontStandard,
+        fontSize: this.currentFontSize,
+        color: this.currentColor,
+        position: { normX, normY },
+        applyToAll: false,
+        startIndex: Number.isInteger(this.currentPageIndex) ? this.currentPageIndex : 0
+      };
+      
+      // Draw on edit canvas
+      try {
+        const ctx = this.editContext;
+        const px = canvasRect.width * normX;
+        const py = canvasRect.height * normY;
+        
+        ctx.save();
+        ctx.fillStyle = this.currentColor;
+        ctx.font = `${this.currentFontSize}px ${fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(pageNumber), px, py);
+        ctx.restore();
+        
+        console.log('Applied page number:', pageNumber, 'at position:', { px, py });
+      } catch (e) {
+        console.error('Failed to draw page number:', e);
+      }
+      
+      // Clean up and exit
+      this.cleanupPageNumberText();
+      this.destroyPageNumberOverlay();
+      this.showStatus(`Page number ${pageNumber} applied. It will be included when saving or merging.`, 'success');
+    };
+    
+    // Update styles when toolbar changes
+    const updateStyles = () => {
+      if (this._currentPageNumberText) {
+        this._currentPageNumberText.style.fontFamily = this.mapFontToCanvas(this.currentFont);
+        this._currentPageNumberText.style.fontSize = this.currentFontSize + 'px';
+        this._currentPageNumberText.style.color = this.currentColor;
+      }
+    };
+    
+    // Listen for toolbar changes
+    this._pageNumberStyleUpdater = updateStyles;
+    
+    // Handle keyboard events - ONLY Enter applies the text
+    textElement.addEventListener('keydown', (e) => {
+      e.stopPropagation(); // Prevent event from bubbling up
+      
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyPageNumber();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.cleanupPageNumberText();
+        this.destroyPageNumberOverlay();
+      }
+    });
+    
+    // Prevent ANY automatic application - only Enter key should apply
+    // No click outside handler that applies automatically
+    const preventAutoApply = (e) => {
+      // Just prevent clicks outside from applying
+      // User must press Enter to apply
+      e.stopPropagation();
+    };
+    
+    // Store reference for cleanup
+    this._preventAutoApply = preventAutoApply;
+    
+    // Add minimal click handling that doesn't auto-apply
+    setTimeout(() => {
+      document.addEventListener('click', preventAutoApply, true);
+    }, 100);
+    
+    this.showStatus('Type page number and press ENTER to apply, or ESC to cancel. Hover border edges to drag.', 'info');
+  }
   
   // REMOVED: cleanupPageNumberText - no longer needed
 
@@ -880,17 +1241,772 @@ class EnhancedPDFProcessor {
 
   // ===== Text and Wipe Annotation Functions =====
   
-  // REMOVED: addTextAtPosition - no longer needed
+  addTextAtPosition(e) {
+    // Prevent multiple text editors
+    if (this.isEditingText) return;
+    
+    // Stop event propagation
+    e.stopPropagation();
+    
+    // Set editing flag
+    this.isEditingText = true;
+    
+    const rect = this.interactionLayer.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    
+    // Store current position
+    this.currentEditorPosition = { x: screenX, y: screenY };
+    
+    // Create a simple text editor container
+    const editorContainer = document.createElement('div');
+    editorContainer.className = 'text-editor-container';
+    editorContainer.style.cssText = `
+      position: absolute;
+      left: ${screenX}px;
+      top: ${screenY}px;
+      z-index: 1000;
+      background: white;
+      border: 2px solid #0078d4;
+      border-radius: 4px;
+      padding: 6px 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      cursor: move;
+      min-width: 150px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    `;
+    
+    // Create drag handle
+    const dragHandle = document.createElement('div');
+    dragHandle.style.cssText = `
+      width: 6px;
+      height: 20px;
+      background: #d1d5db;
+      border-radius: 3px;
+      cursor: grab;
+      flex-shrink: 0;
+    `;
+    
+    // Create text input
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Enter text...';
+    input.style.cssText = `
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: ${this.currentFontSize}px;
+      font-family: ${this.mapFontToCanvas(this.currentFont)};
+      color: ${this.currentColor};
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      vertical-align: top;
+      line-height: 1;
+    `;
+    
+    // Update input style when toolbar changes
+    const updateInputStyle = () => {
+      input.style.fontSize = this.currentFontSize + 'px';
+      input.style.fontFamily = this.mapFontToCanvas(this.currentFont);
+      input.style.color = this.currentColor;
+    };
+    
+    // Listen to toolbar changes
+    const fontFamily = document.getElementById('font-family');
+    const fontSize = document.getElementById('font-size');
+    const textColor = document.getElementById('text-color');
+    
+    const fontChangeHandler = () => updateInputStyle();
+    const sizeChangeHandler = () => updateInputStyle();
+    const colorChangeHandler = () => updateInputStyle();
+    
+    if (fontFamily) fontFamily.addEventListener('change', fontChangeHandler);
+    if (fontSize) fontSize.addEventListener('change', sizeChangeHandler);
+    if (textColor) textColor.addEventListener('change', colorChangeHandler);
+    
+    // Assemble editor
+    editorContainer.appendChild(dragHandle);
+    editorContainer.appendChild(input);
+    this.interactionLayer.appendChild(editorContainer);
+    
+    // Make it draggable
+    this.makeTextEditorDraggable(editorContainer, input, dragHandle);
+    
+    // Focus input
+    input.focus();
+    input.select();
+    
+    // Handle text application
+    const applyText = () => {
+      const text = input.value.trim();
+      if (text) {
+        // Use the tracked current position
+        const currentScreenX = this.currentEditorPosition.x;
+        const currentScreenY = this.currentEditorPosition.y;
+        
+        // Calculate PDF coordinates based on final position
+        let finalPdfCoords;
+        if (this.viewportState) {
+          const viewportRect = this.interactionLayer.parentElement.parentElement.getBoundingClientRect();
+          const layerRect = this.interactionLayer.getBoundingClientRect();
+          const viewportX = currentScreenX + layerRect.left - viewportRect.left;
+          const viewportY = currentScreenY + layerRect.top - viewportRect.top;
+          finalPdfCoords = this.screenToPdfCoords(viewportX, viewportY);
+        } else {
+          finalPdfCoords = {
+            x: currentScreenX / this.currentEditScale,
+            y: currentScreenY / this.currentEditScale
+          };
+        }
+        
+        // Add text annotation with toolbar styling
+        const annotation = {
+          text: text,
+          baseX: finalPdfCoords.x,
+          baseY: finalPdfCoords.y,
+          x: currentScreenX,
+          y: currentScreenY,
+          fontSize: this.currentFontSize,
+          font: this.mapToolbarFontToStandard(this.currentFont),
+          color: this.currentColor
+        };
+        
+        this.textAnnotations.push(annotation);
+        
+        // Draw text on edit canvas at exact position
+        const ctx = this.editContext;
+        ctx.save();
+        ctx.fillStyle = annotation.color;
+        const displayFontSize = this.viewportState ? 
+          annotation.fontSize * this.currentEditScale * this.viewportState.scale : 
+          annotation.fontSize * this.currentEditScale;
+        ctx.font = `${displayFontSize}px ${this.mapFontToCanvas(annotation.font)}`;
+        
+        // Draw at exact position without offset
+        ctx.textBaseline = 'top'; // Align text top with position
+        ctx.fillText(text, currentScreenX, currentScreenY);
+        ctx.restore();
+        
+        console.log('Text annotation added:', annotation);
+        this.showStatus('Text added successfully', 'success');
+      }
+      
+      // Clean up event listeners
+      if (fontFamily) fontFamily.removeEventListener('change', fontChangeHandler);
+      if (fontSize) fontSize.removeEventListener('change', sizeChangeHandler);
+      if (textColor) textColor.removeEventListener('change', colorChangeHandler);
+      
+      // Reset editing flag
+      this.isEditingText = false;
+      
+      // Remove editor
+      this.interactionLayer.removeChild(editorContainer);
+    };
+    
+    // Apply on Enter key
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        applyText();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        // Clean up event listeners
+        if (fontFamily) fontFamily.removeEventListener('change', fontChangeHandler);
+        if (fontSize) fontSize.removeEventListener('change', sizeChangeHandler);
+        if (textColor) textColor.removeEventListener('change', colorChangeHandler);
+        this.isEditingText = false;
+        this.interactionLayer.removeChild(editorContainer);
+      }
+    });
+    
+    
+    // Click outside to apply (after a delay to prevent immediate trigger)
+    let clickOutsideHandler;
+    setTimeout(() => {
+      clickOutsideHandler = (event) => {
+        if (!editorContainer.contains(event.target)) {
+          event.stopPropagation();
+          document.removeEventListener('click', clickOutsideHandler);
+          applyText();
+        }
+      };
+      document.addEventListener('click', clickOutsideHandler);
+    }, 100);
+  }
   
-  // REMOVED: makeTextEditorDraggable - no longer needed
+  makeTextEditorDraggable(container, input, dragHandle) {
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let containerStartX = 0;
+    let containerStartY = 0;
+    
+    const startDrag = (e) => {
+      // Only start drag from drag handle or container (not input)
+      if (e.target !== dragHandle && e.target !== container) {
+        return;
+      }
+      
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      
+      const rect = container.getBoundingClientRect();
+      const parentRect = container.parentElement.getBoundingClientRect();
+      containerStartX = rect.left - parentRect.left;
+      containerStartY = rect.top - parentRect.top;
+      
+      container.style.cursor = 'grabbing';
+      if (dragHandle) dragHandle.style.cursor = 'grabbing';
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    
+    const doDrag = (e) => {
+      if (!isDragging) return;
+      
+      const deltaX = e.clientX - dragStartX;
+      const deltaY = e.clientY - dragStartY;
+      
+      const newX = containerStartX + deltaX;
+      const newY = containerStartY + deltaY;
+      container.style.left = newX + 'px';
+      container.style.top = newY + 'px';
+      
+      // Update current position
+      this.currentEditorPosition = { x: newX, y: newY };
+    };
+    
+    const endDrag = () => {
+      if (isDragging) {
+        isDragging = false;
+        container.style.cursor = 'move';
+        if (dragHandle) dragHandle.style.cursor = 'grab';
+        e.stopPropagation();
+      }
+    };
+    
+    // Mouse events
+    container.addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', endDrag);
+    
+    // Touch events for mobile
+    container.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      startDrag({ clientX: touch.clientX, clientY: touch.clientY, target: e.target, preventDefault: () => e.preventDefault() });
+    });
+    
+    document.addEventListener('touchmove', (e) => {
+      if (isDragging) {
+        const touch = e.touches[0];
+        doDrag({ clientX: touch.clientX, clientY: touch.clientY });
+      }
+    });
+    
+    document.addEventListener('touchend', endDrag);
+    
+    // Clean up event listeners when container is removed
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.removedNodes.forEach((node) => {
+          if (node === container) {
+            document.removeEventListener('mousemove', doDrag);
+            document.removeEventListener('mouseup', endDrag);
+            document.removeEventListener('touchmove', doDrag);
+            document.removeEventListener('touchend', endDrag);
+            observer.disconnect();
+          }
+        });
+      });
+    });
+    
+    observer.observe(container.parentNode, { childList: true });
+  }
   
-  // REMOVED: getTextAnnotationAtPosition - no longer needed
+  getTextAnnotationAtPosition(e) {
+    if (!this.textAnnotations || this.textAnnotations.length === 0) return null;
+    
+    const rect = this.interactionLayer.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    
+    // Check each text annotation
+    for (let i = this.textAnnotations.length - 1; i >= 0; i--) {
+      const ann = this.textAnnotations[i];
+      
+      // Get current screen position of annotation
+      let screenX, screenY;
+      if (this.viewportState) {
+        const screenCoords = this.pdfToScreenCoords(ann.baseX, ann.baseY);
+        screenX = (screenCoords.x - this.viewportState.translateX) / this.viewportState.scale;
+        screenY = (screenCoords.y - this.viewportState.translateY) / this.viewportState.scale;
+      } else {
+        screenX = ann.x || ann.baseX * this.currentEditScale;
+        screenY = ann.y || ann.baseY * this.currentEditScale;
+      }
+      
+      // Estimate text bounds (approximate)
+      const ctx = this.editContext;
+      ctx.save();
+      const displayFontSize = this.viewportState ? 
+        ann.fontSize * this.currentEditScale * this.viewportState.scale : 
+        ann.fontSize * this.currentEditScale;
+      ctx.font = `${displayFontSize}px ${this.mapFontToCanvas(ann.font || 'Arial')}`;
+      const textWidth = ctx.measureText(ann.text).width;
+      ctx.restore();
+      
+      const textHeight = displayFontSize;
+      
+      // Check if click is within text bounds (with some padding)
+      const padding = 5;
+      if (clickX >= screenX - padding && 
+          clickX <= screenX + textWidth + padding &&
+          clickY >= screenY - padding && 
+          clickY <= screenY + textHeight + padding) {
+        return { annotation: ann, index: i };
+      }
+    }
+    
+    return null;
+  }
   
-  // REMOVED: editExistingText - no longer needed
+  editExistingText(e, annotationInfo) {
+    // Prevent multiple editors
+    if (this.isEditingText) return;
+    
+    e.stopPropagation();
+    this.isEditingText = true;
+    
+    const { annotation, index } = annotationInfo;
+    const rect = this.interactionLayer.getBoundingClientRect();
+    
+    // Get current screen position
+    let screenX, screenY;
+    if (this.viewportState) {
+      const screenCoords = this.pdfToScreenCoords(annotation.baseX, annotation.baseY);
+      screenX = (screenCoords.x - this.viewportState.translateX) / this.viewportState.scale;
+      screenY = (screenCoords.y - this.viewportState.translateY) / this.viewportState.scale;
+    } else {
+      screenX = annotation.x || annotation.baseX * this.currentEditScale;
+      screenY = annotation.y || annotation.baseY * this.currentEditScale;
+    }
+    
+    // Store current position
+    this.currentEditorPosition = { x: screenX, y: screenY };
+    
+    // Create editor similar to new text
+    const editorContainer = document.createElement('div');
+    editorContainer.className = 'text-editor-container';
+    editorContainer.style.cssText = `
+      position: absolute;
+      left: ${screenX}px;
+      top: ${screenY}px;
+      z-index: 1000;
+      background: white;
+      border: 2px solid #0078d4;
+      border-radius: 4px;
+      padding: 6px 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      cursor: move;
+      min-width: 150px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    `;
+    
+    // Create drag handle
+    const dragHandle = document.createElement('div');
+    dragHandle.style.cssText = `
+      width: 6px;
+      height: 20px;
+      background: #d1d5db;
+      border-radius: 3px;
+      cursor: grab;
+      flex-shrink: 0;
+    `;
+    
+    // Create text input with existing text
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = annotation.text;
+    input.style.cssText = `
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: ${annotation.fontSize}px;
+      font-family: ${this.mapFontToCanvas(annotation.font)};
+      color: ${annotation.color};
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      vertical-align: top;
+      line-height: 1;
+    `;
+    
+    // Delete button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '🗑';
+    deleteBtn.style.cssText = `
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      padding: 2px 6px;
+      cursor: pointer;
+      font-size: 14px;
+    `;
+    
+    // Update input style when toolbar changes
+    const updateInputStyle = () => {
+      input.style.fontSize = this.currentFontSize + 'px';
+      input.style.fontFamily = this.mapFontToCanvas(this.currentFont);
+      input.style.color = this.currentColor;
+    };
+    
+    // Listen to toolbar changes
+    const fontFamily = document.getElementById('font-family');
+    const fontSize = document.getElementById('font-size');
+    const textColor = document.getElementById('text-color');
+    
+    const fontChangeHandler = () => updateInputStyle();
+    const sizeChangeHandler = () => updateInputStyle();
+    const colorChangeHandler = () => updateInputStyle();
+    
+    if (fontFamily) fontFamily.addEventListener('change', fontChangeHandler);
+    if (fontSize) fontSize.addEventListener('change', sizeChangeHandler);
+    if (textColor) textColor.addEventListener('change', colorChangeHandler);
+    
+    // Assemble editor
+    editorContainer.appendChild(dragHandle);
+    editorContainer.appendChild(input);
+    editorContainer.appendChild(deleteBtn);
+    this.interactionLayer.appendChild(editorContainer);
+    
+    // Clear the existing text from canvas temporarily
+    this.redrawAnnotations();
+    
+    // Make it draggable
+    this.makeTextEditorDraggable(editorContainer, input, dragHandle);
+    
+    // Focus and select input
+    input.focus();
+    input.select();
+    
+    // Handle text update
+    const updateText = () => {
+      const text = input.value.trim();
+      
+      if (text) {
+        // Update annotation with new position and text
+        const currentScreenX = this.currentEditorPosition.x;
+        const currentScreenY = this.currentEditorPosition.y;
+        
+        // Calculate new PDF coordinates
+        let finalPdfCoords;
+        if (this.viewportState) {
+          const viewportRect = this.interactionLayer.parentElement.parentElement.getBoundingClientRect();
+          const layerRect = this.interactionLayer.getBoundingClientRect();
+          const viewportX = currentScreenX + layerRect.left - viewportRect.left;
+          const viewportY = currentScreenY + layerRect.top - viewportRect.top;
+          finalPdfCoords = this.screenToPdfCoords(viewportX, viewportY);
+        } else {
+          finalPdfCoords = {
+            x: currentScreenX / this.currentEditScale,
+            y: currentScreenY / this.currentEditScale
+          };
+        }
+        
+        // Update the annotation
+        annotation.text = text;
+        annotation.baseX = finalPdfCoords.x;
+        annotation.baseY = finalPdfCoords.y;
+        annotation.x = currentScreenX;
+        annotation.y = currentScreenY;
+        annotation.fontSize = parseInt(input.style.fontSize);
+        annotation.font = this.mapToolbarFontToStandard(this.currentFont);
+        annotation.color = input.style.color;
+      } else {
+        // Remove annotation if text is empty
+        this.textAnnotations.splice(index, 1);
+      }
+      
+      // Redraw all annotations
+      this.redrawAnnotations();
+      
+      // Clean up
+      if (fontFamily) fontFamily.removeEventListener('change', fontChangeHandler);
+      if (fontSize) fontSize.removeEventListener('change', sizeChangeHandler);
+      if (textColor) textColor.removeEventListener('change', colorChangeHandler);
+      
+      this.isEditingText = false;
+      this.interactionLayer.removeChild(editorContainer);
+      
+      this.showStatus(text ? 'Text updated successfully' : 'Text removed', 'success');
+    };
+    
+    // Handle delete
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.textAnnotations.splice(index, 1);
+      this.redrawAnnotations();
+      
+      // Clean up
+      if (fontFamily) fontFamily.removeEventListener('change', fontChangeHandler);
+      if (fontSize) fontSize.removeEventListener('change', sizeChangeHandler);
+      if (textColor) textColor.removeEventListener('change', colorChangeHandler);
+      
+      this.isEditingText = false;
+      this.interactionLayer.removeChild(editorContainer);
+      this.showStatus('Text removed', 'success');
+    });
+    
+    // Apply on Enter key
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        updateText();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        // Cancel without saving
+        this.redrawAnnotations();
+        if (fontFamily) fontFamily.removeEventListener('change', fontChangeHandler);
+        if (fontSize) fontSize.removeEventListener('change', sizeChangeHandler);
+        if (textColor) textColor.removeEventListener('change', colorChangeHandler);
+        this.isEditingText = false;
+        this.interactionLayer.removeChild(editorContainer);
+      }
+    });
+    
+    // Click outside to apply
+    let clickOutsideHandler;
+    setTimeout(() => {
+      clickOutsideHandler = (event) => {
+        if (!editorContainer.contains(event.target)) {
+          event.stopPropagation();
+          document.removeEventListener('click', clickOutsideHandler);
+          updateText();
+        }
+      };
+      document.addEventListener('click', clickOutsideHandler);
+    }, 100);
+  }
   
-  // REMOVED: addWipeAnnotation - no longer needed
+  addWipeAnnotation(rect) {
+    // Add wipe annotation to the list
+    const scale = this.currentEditScale || 1.0;
+    const wipeRect = {
+      // display coords (current scale)
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
+      // base coords (unscaled)
+      baseX: rect.x / scale,
+      baseY: rect.y / scale,
+      baseWidth: rect.width / scale,
+      baseHeight: rect.height / scale
+    };
+    
+    this.wipeAnnotations.push(wipeRect);
+    
+    // Draw white rectangle on edit canvas
+    const ctx = this.editContext;
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+  ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+    ctx.restore();
+    
+    console.log('Wipe annotation added:', wipeRect);
+    this.showStatus('Area wiped successfully', 'success');
+  }
 
-  // REMOVED: saveEditedPage - no longer needed
+  async saveEditedPage() {
+    this.showLoading('Saving page edits...');
+    try {
+      console.log('=== SAVE EDITED PAGE START ===');
+      console.log('Current page info:', {
+        id: this.currentPage?.id,
+        fileName: this.currentPage?.fileName,
+        isModified: this.currentPage?.isModified,
+        hasOriginalPdfDoc: !!this.currentPage?.pdfDoc
+      });
+      console.log('Saving edited page with', this.textAnnotations.length, 'text annotations and', this.wipeAnnotations.length, 'wipe annotations.');
+      
+      // Load PDFLib if not already loaded
+      const pdfLib = await this.loadPDFLib();
+      console.log('PDFLib loaded successfully');
+      
+      // Create new PDF page with modifications
+      const pdfDoc = await pdfLib.PDFDocument.create();
+      const [existingPage] = await pdfDoc.copyPages(this.currentPage.pdfDoc, [this.currentPage.filePageIndex]);
+      const page = pdfDoc.addPage(existingPage);
+      
+      // Get the original PDF page viewport at scale 1.0 to calculate the correct scaling factor
+      const scaleFactor = page.getWidth() / this.baseCanvasWidth;
+
+      // Add text annotations to PDF
+      for (const annotation of this.textAnnotations) {
+        const pageHeight = page.getHeight();
+        const baseX = (annotation.baseX != null) ? annotation.baseX : annotation.x / (this.currentEditScale || 1.0);
+        const baseY = (annotation.baseY != null) ? annotation.baseY : annotation.y / (this.currentEditScale || 1.0);
+        page.drawText(annotation.text, {
+          x: baseX * scaleFactor,
+          y: pageHeight - (baseY * scaleFactor) - (annotation.fontSize * scaleFactor * 0.2), // Fine-tune baseline
+          size: annotation.fontSize * scaleFactor,
+          font: await pdfDoc.embedFont(pdfLib.StandardFonts[annotation.font] || pdfLib.StandardFonts.Helvetica),
+          color: pdfLib.rgb(
+            parseInt(annotation.color.slice(1, 3), 16) / 255,
+            parseInt(annotation.color.slice(3, 5), 16) / 255,
+            parseInt(annotation.color.slice(5, 7), 16) / 255
+          )
+        });
+      }
+      
+      // Add wipe annotations to PDF
+      if (this.wipeAnnotations) {
+        for (const rect of this.wipeAnnotations) {
+          const pageHeight = page.getHeight();
+          const baseX = (rect.baseX != null) ? rect.baseX : rect.x / (this.currentEditScale || 1.0);
+          const baseY = (rect.baseY != null) ? rect.baseY : rect.y / (this.currentEditScale || 1.0);
+          const baseW = (rect.baseWidth != null) ? rect.baseWidth : rect.width / (this.currentEditScale || 1.0);
+          const baseH = (rect.baseHeight != null) ? rect.baseHeight : rect.height / (this.currentEditScale || 1.0);
+          page.drawRectangle({
+            x: baseX * scaleFactor,
+            y: pageHeight - ((baseY + baseH) * scaleFactor),
+            width: baseW * scaleFactor,
+            height: baseH * scaleFactor,
+            color: pdfLib.rgb(1, 1, 1), // White
+            opacity: 1,
+          });
+        }
+      }
+
+      // Manual numbering for single page if chosen not to apply to all
+      if (this.pageNumberSettings?.enabled && this.pageNumberSettings.mode === 'manual' && !this.pageNumberSettings.applyToAll) {
+        const num = this.pageNumberSettings.startNumber || 1;
+        await this.drawPageNumberOnPdfLibPage(
+          pdfLib,
+          pdfDoc,
+          page,
+          num,
+          this.pageNumberSettings.position,
+          this.pageNumberSettings.font,
+          this.pageNumberSettings.fontSize,
+          this.pageNumberSettings.color
+        );
+      }
+
+      // Generate the updated PDF bytes
+      const pdfBytes = await pdfDoc.save();
+      console.log('PDF saved, bytes length:', pdfBytes.length);
+      console.log('PDF bytes type:', typeof pdfBytes);
+      console.log('PDF bytes constructor:', pdfBytes.constructor.name);
+      console.log('PDF bytes is Uint8Array:', pdfBytes instanceof Uint8Array);
+      
+      // Validate PDF data
+      if (!pdfBytes || pdfBytes.length === 0) {
+        throw new Error('Generated PDF data is empty');
+      }
+      
+      // Ensure we have a proper Uint8Array
+      let validPdfBytes;
+      if (pdfBytes instanceof Uint8Array) {
+        validPdfBytes = pdfBytes;
+      } else if (Array.isArray(pdfBytes)) {
+        validPdfBytes = new Uint8Array(pdfBytes);
+        console.log('✅ Converted array to Uint8Array');
+      } else {
+        throw new Error('Invalid PDF data type: ' + typeof pdfBytes);
+      }
+      
+      // Test loading the PDF to ensure it's valid
+      try {
+        const testPdf = await pdfLib.PDFDocument.load(validPdfBytes);
+        console.log('✅ PDF validation successful, pages:', testPdf.getPageCount());
+      } catch (validationError) {
+        console.error('❌ PDF validation failed:', validationError);
+        throw new Error('Generated PDF is corrupted: ' + validationError.message);
+      }
+      
+      // Update the page data in our system with backup
+      this.currentPage.pdfData = validPdfBytes;
+      this.currentPage.isModified = true;
+      
+      // Create a backup in the global pages array as well
+      const pageIndex = this.pages.findIndex(p => p.id === this.currentPage.id);
+      if (pageIndex !== -1) {
+        this.pages[pageIndex].pdfData = validPdfBytes;
+        this.pages[pageIndex].isModified = true;
+        console.log('✅ Backup PDF data stored in pages array');
+        console.log('Backup data type:', this.pages[pageIndex].pdfData.constructor.name);
+        console.log('Backup data size:', this.pages[pageIndex].pdfData.length);
+      } else {
+        console.warn('⚠️ Could not find page in pages array for backup');
+      }
+      
+      // For edited pages, the filePageIndex should be 0 since we create a single-page PDF
+      this.currentPage.editedPageIndex = 0;
+      
+      // Reload the PDF for future operations
+      const updatedPdfDoc = await pdfLib.PDFDocument.load(validPdfBytes);
+      this.currentPage.pdfDoc = updatedPdfDoc;
+      
+      // Also update PDF.js document for previews
+      try {
+        // Pass a copy of the data to PDF.js to prevent the original buffer from being detached.
+        // This is the crucial fix for the "detached ArrayBuffer" error.
+        const pdfDataForPreview = new Uint8Array(validPdfBytes);
+        const updatedPdfJSDoc = await pdfjsLib.getDocument({data: pdfDataForPreview}).promise;
+        this.currentPage.pdfJSDoc = updatedPdfJSDoc;
+        console.log('✅ PDF.js document updated, pages:', updatedPdfJSDoc.numPages);
+      } catch (pdfjsError) {
+        console.error('❌ Failed to load PDF with PDF.js:', pdfjsError);
+        throw new Error('Failed to create PDF.js document: ' + pdfjsError.message);
+      }
+      
+      console.log('Page data updated successfully');
+      
+      // Final validation: Ensure the data persisted correctly
+      console.log('Final validation:');
+      console.log('- currentPage.pdfData size:', this.currentPage.pdfData ? this.currentPage.pdfData.length : 0);
+      console.log('- currentPage.pdfData type:', this.currentPage.pdfData ? this.currentPage.pdfData.constructor.name : 'none');
+      console.log('- currentPage.isModified:', this.currentPage.isModified);
+      
+      const pageInArray = this.pages.find(p => p.id === this.currentPage.id);
+      if (pageInArray) {
+        console.log('- pages array backup size:', pageInArray.pdfData ? pageInArray.pdfData.length : 0);
+        console.log('- pages array backup type:', pageInArray.pdfData ? pageInArray.pdfData.constructor.name : 'none');
+        console.log('- pages array isModified:', pageInArray.isModified);
+      }
+      
+      // Regenerate preview with the updated PDF
+      await this.regeneratePagePreview(this.currentPage);
+      
+      // Exit edit mode
+      this.exitEditMode();
+      
+      // Show success message
+      this.hideLoading();
+      console.log('=== SAVE EDITED PAGE SUCCESS ===');
+      console.log('Page saved successfully');
+      this.showToast('Page saved successfully!', 'success');
+      
+    } catch (error) {
+      this.hideLoading();
+      console.error('=== SAVE EDITED PAGE FAILED ===');
+      console.error('Failed to save edited page:', error);
+      console.error('Error details:', error.message);
+      console.error('Current page state:', this.currentPage);
+      this.showToast(`Failed to save page: ${error.message}`, 'error');
+    }
+  }
 
   async regeneratePagePreview(page) {
     try {
@@ -958,7 +2074,50 @@ class EnhancedPDFProcessor {
     }
   }
 
-  // REMOVED: exitEditMode - no longer needed
+  exitEditMode(overlay = null) {
+    console.log('Exiting edit mode...');
+  // Clean up any page-number overlay
+  this.destroyPageNumberOverlay();
+  // Clean up any edit-text overlay
+  this.disableEditTextMode();
+    
+    // Remove toolbar from body
+    const toolbar = document.querySelector('.editor-toolbar');
+    if (toolbar) {
+      document.body.removeChild(toolbar);
+      console.log('Toolbar removed');
+    }
+    
+    if (overlay) {
+      if (overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+        console.log('Overlay removed');
+      }
+    } else {
+      // Find and remove the overlay
+      const existingOverlay = document.querySelector('.page-fullscreen-overlay');
+      if (existingOverlay && existingOverlay.parentNode) {
+        existingOverlay.parentNode.removeChild(existingOverlay);
+        console.log('Existing overlay removed');
+      }
+    }
+    
+    // Clean up editing state
+    this.editMode = 'view';
+    this.textAnnotations = [];
+    this.wipeAnnotations = [];
+    this.actionHistory = [];
+    this.currentPage = null;
+    
+    // Make sure the main modal is still visible
+    const modal = document.getElementById('page-preview-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      console.log('Main modal restored');
+    }
+    
+    console.log('Edit mode exited successfully');
+  }
 
   bindPageCardEvents() {
     const pageCards = this.elements.pagesContainer.querySelectorAll('.page-card');
