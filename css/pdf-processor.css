@@ -1575,6 +1575,94 @@ input:focus,
 
 /* REMOVED: PDF Editor Interface styles - no longer needed for simplified merge tool */
 
+/* Format Support Section */
+.format-support {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.format-support h3 {
+  margin: 0 0 1rem 0;
+  color: #495057;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.format-categories {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.format-category {
+  padding: 1rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  text-align: center;
+}
+
+.format-category h4 {
+  margin: 0 0 0.5rem 0;
+  color: #343a40;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.format-category span {
+  color: #6c757d;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* Conversion Settings */
+.conversion-options {
+  margin-bottom: 2rem;
+}
+
+.conversion-options h3 {
+  margin: 0 0 1rem 0;
+  color: #495057;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.settings-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.setting-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.setting-option label {
+  font-weight: 500;
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.setting-option select {
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background: white;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.setting-option select:focus {
+  outline: none;
+  border-color: #007acc;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.25);
+}
+
 /* Download section styling */
 .download-info {
   margin-top: 10px;
