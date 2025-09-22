@@ -73,3 +73,48 @@ document.addEventListener('DOMContentLoaded', function() {
 		});
 	});
 });
+
+// AdSense bottom anchor padding utility
+// Ensures footer/content isn't overlapped by Auto Ads "anchor" banner
+(function() {
+	function getPx(value) {
+		return typeof value === 'number' ? value : parseFloat(value || '0') || 0;
+	}
+
+	const originalPadding = (() => {
+		try { return getPx(getComputedStyle(document.body).paddingBottom); } catch { return 0; }
+	})();
+
+	let applied = 0; // last applied padding by this script
+
+	function updateAnchorPadding() {
+		const anchor = document.getElementById('google_ads_bottom_anchor');
+		if (anchor && anchor.offsetParent !== null) {
+			const rect = anchor.getBoundingClientRect();
+			const h = Math.max(0, Math.round(rect.height || 0));
+			const target = Math.max(originalPadding, h);
+			if (target !== applied) {
+				document.body.style.paddingBottom = target ? target + 'px' : '';
+				applied = target;
+			}
+		} else {
+			if (applied) {
+				// restore original
+				document.body.style.paddingBottom = originalPadding ? originalPadding + 'px' : '';
+				applied = 0;
+			}
+		}
+	}
+
+	// Observe DOM for injected anchor
+	const mo = new MutationObserver(updateAnchorPadding);
+	try {
+		mo.observe(document.documentElement, { childList: true, subtree: true });
+	} catch {}
+
+	// Adjust on resize/orientation changes
+	window.addEventListener('resize', updateAnchorPadding);
+	window.addEventListener('orientationchange', updateAnchorPadding);
+	window.addEventListener('load', updateAnchorPadding);
+	document.addEventListener('DOMContentLoaded', updateAnchorPadding);
+})();
