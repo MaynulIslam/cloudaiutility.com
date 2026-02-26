@@ -16,7 +16,8 @@ class BackgroundRemover {
         this.isProcessing = false;
         this.removeBgBtn.disabled = false;
         this.downloadBtn.style.display = 'none';
-        
+        this.transparentResultCanvas = null;
+
         // Clear canvases
         if (this.resultCanvas) {
             const ctx = this.resultCanvas.getContext('2d');
@@ -411,7 +412,13 @@ class BackgroundRemover {
             
             // Draw to display canvas
             ctx.drawImage(workingCanvas, 0, 0, canvas.width, canvas.height);
-            
+
+            // Store the transparent foreground so applyBackground() can composite correctly
+            this.transparentResultCanvas = document.createElement('canvas');
+            this.transparentResultCanvas.width = canvas.width;
+            this.transparentResultCanvas.height = canvas.height;
+            this.transparentResultCanvas.getContext('2d').drawImage(canvas, 0, 0);
+
             // Apply selected background
             this.applyBackground();
             
@@ -481,48 +488,31 @@ class BackgroundRemover {
     }
 
     applyBackground() {
-        if (!this.resultCanvas.getContext('2d').getImageData(0, 0, 1, 1)) return;
-        
+        if (!this.transparentResultCanvas) return;
+
         const canvas = this.resultCanvas;
         const ctx = canvas.getContext('2d');
-        
-        // Get current image data
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        
-        // Create background canvas
-        const bgCanvas = document.createElement('canvas');
-        const bgCtx = bgCanvas.getContext('2d');
-        bgCanvas.width = canvas.width;
-        bgCanvas.height = canvas.height;
-        
-        // Apply background
-        switch (this.currentBackground) {
-            case 'white':
-                bgCtx.fillStyle = '#ffffff';
-                bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-                break;
-            case 'black':
-                bgCtx.fillStyle = '#000000';
-                bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-                break;
-            case 'custom':
-                bgCtx.fillStyle = this.customColorInput.value;
-                bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-                break;
-            case 'transparent':
-            default:
-                // No background - keep transparent
-                break;
-        }
-        
-        // Clear and redraw
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
+        // Draw background color first (if not transparent)
         if (this.currentBackground !== 'transparent') {
-            ctx.drawImage(bgCanvas, 0, 0);
+            switch (this.currentBackground) {
+                case 'white':
+                    ctx.fillStyle = '#ffffff';
+                    break;
+                case 'black':
+                    ctx.fillStyle = '#000000';
+                    break;
+                case 'custom':
+                    ctx.fillStyle = this.customColorInput.value;
+                    break;
+            }
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
-        
-        ctx.putImageData(imageData, 0, 0);
+
+        // Draw the transparent foreground on top
+        ctx.drawImage(this.transparentResultCanvas, 0, 0);
     }
 
     // Download functionality

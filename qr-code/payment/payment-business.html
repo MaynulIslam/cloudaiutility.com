@@ -68,7 +68,7 @@
         <div class="dropdown-content">
           <a href="../basic/basic-qr.html">Basic QR Codes</a>
           <a href="./payment-business.html">Payment & Business</a>
-          <a href="../../qr-code.html#advanced">Advanced Options</a>
+          <a href="../customization/custom-qr.html">Custom QR Codes</a>
         </div>
       </div>
     </nav>
@@ -294,6 +294,8 @@
   </footer>
 
   <!-- QR library (non-fatal); SimpleQR as fallback -->
+  <!-- PDF generation library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script>
     if (typeof QRCode === 'undefined') {

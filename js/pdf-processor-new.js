@@ -1384,14 +1384,6 @@ class EnhancedPDFProcessor {
     }
   }
   
-  formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  }
-  
   async updateCompressionSizes() {
     if (!this.mergedPdfData) return;
     
@@ -1551,44 +1543,10 @@ class EnhancedPDFProcessor {
 
   async compressPdf(pdfData, compressionLevel) {
     try {
-      // First, try server-side compression if available
-      const serverUrl = 'http://localhost:3001/api/compress-pdf';
-      
-      // Check if server is available
-      try {
-        const formData = new FormData();
-        const blob = new Blob([pdfData], { type: 'application/pdf' });
-        formData.append('pdf', blob, 'document.pdf');
-        formData.append('level', compressionLevel);
-        
-        const response = await fetch(serverUrl, {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (response.ok) {
-          const compressedBlob = await response.blob();
-          const arrayBuffer = await compressedBlob.arrayBuffer();
-          
-          // Get compression stats from headers
-          const originalSize = response.headers.get('X-Original-Size');
-          const compressedSize = response.headers.get('X-Compressed-Size');
-          const ratio = response.headers.get('X-Compression-Ratio');
-          
-          if (originalSize && compressedSize && ratio) {
-            console.log(`✅ Server compression successful: ${this.formatFileSize(originalSize)} → ${this.formatFileSize(compressedSize)} (${ratio}% reduction)`);
-          }
-          
-          return new Uint8Array(arrayBuffer);
-        }
-      } catch (error) {
-        console.log('Server compression not available, using client-side fallback');
-      }
-      
-      // Fallback: Client-side compression using pdf-lib
+      // Client-side compression using pdf-lib
       // This provides basic compression by optimizing the PDF structure
       try {
-        const { PDFDocument } = window.PDFLib;
+        const { PDFDocument } = window.pdfLib;
         const pdfDoc = await PDFDocument.load(pdfData);
         
         // Compression options based on level
