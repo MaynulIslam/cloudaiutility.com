@@ -1,0 +1,393 @@
+/* Styles for sign selection dropdown and display */
+.modal-title-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.field-toolbar {
+  margin-left: 2rem;
+}
+
+.dropdown-container {
+  position: relative;
+}
+
+.dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.dropdown-arrow {
+  width: 16px;
+  height: 16px;
+}
+
+.sign-in-use {
+  margin-left: auto;
+}
+
+.current-sign-display {
+  font-size: 0.95rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.sign-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  background: white;
+  border: 1px solid #ddd;
+  padding: 0.5rem;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 1001;
+  min-width: 280px;
+}
+
+.sign-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.sign-row:last-child {
+  margin-bottom: 0;
+}
+
+.sign-row label {
+  width: 18px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.sign-input {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.sign-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(38, 105, 105, 0.2);
+}
+
+.choose-sign-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.choose-sign-btn:hover {
+  background: var(--accent-strong);
+}
+
+/* Modal page container adjustments for single page view */
+.document-pages-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: calc(70vh + 20px); /* +20px taller */
+  overflow: auto;
+}
+
+.document-pages-container { position: relative; }
+
+.pdf-page-wrapper.single-page {
+  position: relative;
+  display: inline-block;
+  background: #f7f7f7;
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* Page enter slide animations */
+.page-enter.from-right {
+  animation: slideFromRight 320ms ease both;
+}
+.page-enter.from-left {
+  animation: slideFromLeft 320ms ease both;
+}
+
+@keyframes slideFromRight {
+  from { transform: translateX(30%) scale(0.98); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+@keyframes slideFromLeft {
+  from { transform: translateX(-30%) scale(0.98); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+.pdf-page-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.page-signature-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none; /* children will enable pointer events when needed */
+}
+
+.pdf-page-wrapper .signature-field {
+  /* Neutralize any legacy template appearance */
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  color: inherit !important;
+  pointer-events: auto; /* allow dragging and clicking */
+}
+
+.signature-textarea {
+  font-family: var(--ui-font, Arial, sans-serif);
+  color: #111;
+  background: transparent;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  outline: none;
+  box-shadow: none;
+  min-width: 80px;
+  min-height: 28px;
+  max-width: 90%;
+  max-height: 60%;
+  overflow: auto;
+}
+
+.signature-plain {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: #0b0b0b;
+  font-family: var(--ui-font, Arial, sans-serif);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.signature-text-only {
+  position: absolute !important;
+  background: none !important;
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  box-sizing: content-box !important;
+  /* Let inline styles control color and font-family */
+  color: inherit;
+  font-family: inherit;
+  pointer-events: auto;
+  user-select: none;
+  white-space: nowrap;
+  display: inline !important;
+  line-height: 1 !important;
+}
+
+/* Style for the currently selected text field */
+.signature-text-only.selected {
+  outline: 2px dashed #266969; /* Use accent color */
+  outline-offset: 3px;
+}
+
+/* Hard override to prevent any residual template styles around text */
+.page-signature-overlay .signature-text-only,
+.page-signature-overlay .signature-text-only * {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Hide any legacy template elements if they somehow remain */
+.page-signature-overlay .signature-field,
+.page-signature-overlay .signature-field *,
+.page-signature-overlay .field-label,
+.page-signature-overlay .delete-field {
+  display: none !important;
+}
+
+.signature-image-wrapper {
+  background: transparent !important;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  position: relative;
+  cursor: move;
+}
+
+.signature-image-wrapper .resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  background: #666;
+  cursor: nw-resize;
+  border-radius: 2px;
+}
+
+.signature-image {
+  position: absolute;
+  background: transparent !important;
+  border: none !important;
+  cursor: move;
+}
+
+.signature-image .delete-field {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: #ff4444;
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+/* Also neutralize legacy label/delete within boxed templates if they appear */
+.signature-field .field-label {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: inherit !important;
+}
+.signature-field .delete-field {
+  display: none !important; /* hide red X on legacy boxes */
+}
+
+.img-preview {
+  margin-top: 4px;
+  min-height: 20px;
+}
+
+.sign-controls {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.sign-image-input {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+
+
+/* Side navigation arrows shown on left/right of the page preview */
+.side-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(0,0,0,0.55);
+}
+.side-nav-btn svg {
+  width: 34px;
+  height: 34px;
+  stroke: rgba(0,0,0,0.55);
+}
+.side-nav-btn.left { pointer-events: auto; }
+.side-nav-btn.right { pointer-events: auto; }
+.side-nav-btn:hover { color: rgba(0,0,0,0.85); }
+.side-nav-btn:hover svg { stroke: rgba(0,0,0,0.85); }
+
+/* Signature Controls in Modal Header */
+.signature-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* tighter spacing */
+  margin-left: 0.75rem;
+  margin-right: auto; /* Pushes subsequent items to the right */
+}
+
+.font-select,
+.font-size-input {
+  padding: 0.25rem 0.5rem; /* smaller controls */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 0.85rem; /* smaller text */
+}
+
+.font-select {
+  min-width: 130px; /* slightly narrower */
+}
+
+.font-size-input {
+  width: 52px; /* narrower */
+}
+
+.font-color-input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 24px; /* smaller swatch */
+  height: 24px;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  cursor: pointer;
+  background-color: transparent;
+}
+
+/* Style the inner color swatch for WebKit browsers (Chrome, Safari) */
+.font-color-input::-webkit-color-swatch {
+  border-radius: 50%;
+  border: none;
+}
+
+/* Style the inner color swatch for Firefox */
+.font-color-input::-moz-color-swatch {
+  border-radius: 50%;
+  border: none;
+}
+

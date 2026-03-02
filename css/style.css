@@ -1,0 +1,468 @@
+@import url('https://fonts.googleapis.com/css2?family=Cherry+Bomb+One&display=swap');
+/*
+  Clean, backward-compatible stylesheet.
+  - Uses CSS variables for theme
+  - Supports semantic tags (header, nav) and class-based (.header, .header-nav)
+  - Keeps existing utility classes (.cherry-bomb-one-regular, .cherry-bomb-one-title)
+  - Minimizes global selectors to avoid accidental overrides
+*/
+
+:root{
+  --bg: #f7f9fb;
+  --surface: #ffffff;
+  --text: #222222;
+  --muted: #666666;
+  --accent: #266969; /* navigation color */
+  --accent-strong: #0078d7; /* highlight / previous accent */
+  --title-color: #1B4B4B;
+  --radius: 12px;
+  --container-width: 800px;
+  --gap: 1rem;
+}
+
+/* Base / reset */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:'Segoe UI', Arial, system-ui, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Keep link behavior neutral by default */
+a{color:inherit;text-decoration:none}
+
+/* ---------- Header / Nav (compat supports both) ---------- */
+/* Apply to both semantic and class-based headers */
+header, .header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:1rem 2rem;
+  background:var(--surface);
+  box-shadow:0 2px 8px rgba(0,0,0,0.04);
+}
+
+/* Provide safe space below header for pages that start with tight sections */
+main { margin-top: 0.5rem; }
+
+/* Support both nav and .header-nav */
+nav, .header-nav, .header-nav-middle, .header-nav-right{
+  display:flex;
+  gap:1rem;
+  align-items:center;
+}
+
+/* Middle navigation should be centered and take up available space */
+.header-nav-middle {
+  flex: 1;
+  justify-content: center;
+  gap: 3rem;
+}
+
+/* Right navigation stays compact */
+.header-nav-right {
+  justify-content: flex-end;
+}
+
+/* Logo / site title (link) */
+.site-logo, .cherry-bomb-one-regular{
+  font-family:'Cherry Bomb One', system-ui, sans-serif;
+  color:var(--accent);
+  font-weight:400;
+  font-size:1.5rem;
+  letter-spacing:.5px;
+  text-decoration:none; /* explicit: no underline */
+  display:inline-block;
+}
+/* ensure visited / focus states don't change appearance */
+.site-logo:visited, .site-logo:focus, .cherry-bomb-one-regular:visited, .cherry-bomb-one-regular:focus{
+  color:var(--accent);
+  text-decoration:none;
+}
+
+/* nav links use logo font and color */
+.nav-link, nav a, .header-nav .nav-link{
+  font-family:'Cherry Bomb One', system-ui, sans-serif;
+  color:var(--accent);
+  font-size:1.3rem; /* reduced from 1.5rem to make smaller than logo */
+  text-decoration:none;
+  cursor:default; /* user requested no hover change */
+}
+
+/* Disabled navigation link styling */
+.nav-link.disabled-link {
+  color: #999999; /* Grey color */
+  cursor: not-allowed;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.nav-link.disabled-link:hover {
+  color: #999999; /* Stay grey on hover */
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* nav links behave without hover zoom to avoid overlap with page content */
+.nav-link, nav a, .header-nav .nav-link{
+  display:inline-block;
+}
+.nav-link:hover, nav a:hover, .header-nav .nav-link:hover{
+  transform:none;
+  text-decoration:none; /* ensure no underline */
+  cursor:default; /* keep cursor unchanged per request */
+}
+
+/* Active navigation state */
+.nav-link.active, .header-nav .nav-link.active{
+  background: var(--accent);
+  color: white;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+}
+
+.nav-link.active:hover, .header-nav .nav-link.active:hover{
+  background: var(--accent);
+  color: white;
+}
+
+/* Dropdown Navigation Styles */
+.nav-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: var(--surface);
+  min-width: 280px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  border-radius: var(--radius);
+  z-index: 1000;
+  padding: 0.5rem 0;
+  margin-top: 0.5rem;
+  border: 1px solid rgba(38, 105, 105, 0.1);
+}
+
+.dropdown-content a {
+  color: var(--text);
+  padding: 0.75rem 1.5rem;
+  text-decoration: none;
+  display: block;
+  font-family: 'Segoe UI', Arial, system-ui, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 180ms ease;
+  transform: none; /* override nav link transform */
+}
+
+.dropdown-content a:hover {
+  background-color: var(--bg);
+  color: var(--accent);
+  transform: none; /* prevent scaling on dropdown items */
+  cursor: pointer;
+}
+
+.nav-dropdown:hover .dropdown-content,
+.dropdown-content.show {
+  display: block;
+}
+
+/* Disable dropdown hover for disabled sign-in button */
+.nav-dropdown:has(.disabled-link):hover .dropdown-content {
+  display: none;
+}
+
+/* Alternative approach for better browser compatibility */
+.nav-dropdown.disabled-dropdown:hover .dropdown-content,
+.nav-dropdown.disabled-dropdown .dropdown-content.show {
+  display: none !important;
+}
+
+/* Smaller dropdown for Sign in (right navigation) */
+.header-nav-right .dropdown-content {
+  min-width: 100px;
+}
+
+/* logo without hover zoom (prevents layout overlap) */
+.site-logo, .cherry-bomb-one-regular{
+  display:inline-block;
+}
+.site-logo:hover, .cherry-bomb-one-regular:hover{
+  transform:none;
+}
+.site-logo:hover{cursor:pointer}
+
+/* ---------- Container / Page title ---------- */
+.container{
+  max-width:var(--container-width);
+  margin:2rem auto;
+  padding:0 1rem;
+}
+main{
+  max-width:var(--container-width);
+  margin:2rem auto;
+  padding:0 1rem;
+  flex: 1; /* only main should flex to push footer down */
+}
+
+/* If a page wraps main inside a top-level .container, ensure it also flexes */
+body > .container{
+  flex: 1;
+}
+.page-title{ 
+  text-align:center; 
+  margin-bottom:var(--gap);
+  font-family:'Cherry Bomb One', system-ui, sans-serif;
+  font-size:2rem;
+  color:var(--title-color);
+  letter-spacing:2px;
+} 
+.cherry-bomb-one-title{
+  font-family:'Cherry Bomb One', system-ui, sans-serif;
+  font-size:2rem;
+  color:var(--title-color);
+  letter-spacing:2px;
+  margin:1;
+}
+
+/* ---------- Card Grid / Cards ---------- */
+.card-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:var(--gap);
+}
+.service-card{
+  background:var(--surface);
+  border-radius:var(--radius);
+  box-shadow:0 2px 12px rgba(0,0,0,0.07);
+  text-align:center;
+  padding: 1em 1.6em;
+  color:inherit;
+  transition:transform 0.25s cubic-bezier(.25,.8,.25,1), box-shadow 0.2s;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  position:relative;
+}
+.service-card img{width:60px;height:60px;margin-bottom:1rem;transition:transform .35s ease}
+.service-card h2{
+  font-size: 1rem;  /* Adjust this value for card titles */
+  margin: 0.5rem 0;
+}
+.service-card p{
+  font-size: 0.9rem;  /* Adjust this value for card descriptions */
+  margin: 0.5rem 0;
+  line-height: 1.4;
+}
+.service-card:hover{transform:scale(1.06);box-shadow:0 8px 32px rgba(0,123,215,0.18);border:2px solid rgba(0,120,200,0.08)}
+.service-card:hover img{transform:scale(1.12) rotate(-6deg)}
+
+/* Upcoming feature styling */
+.service-card.upcoming-feature {
+  background: #f0f0f0 !important;
+  border: 2px solid #cccccc !important;
+  color: #888888 !important;
+  cursor: default;
+  pointer-events: auto;
+  position: relative;
+  opacity: 0.5 !important;
+  filter: grayscale(100%) brightness(0.8) !important;
+}
+.service-card.upcoming-feature:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  border: 2px solid #cccccc !important;
+  background: #f0f0f0 !important;
+}
+.service-card.upcoming-feature:hover img {
+  transform: none !important;
+}
+.service-card.upcoming-feature img {
+  filter: grayscale(100%) brightness(0.6) !important;
+  opacity: 0.3 !important;
+}
+.service-card.upcoming-feature h2 {
+  color: #999999 !important;
+  opacity: 0.6 !important;
+}
+.service-card.upcoming-feature p {
+  color: #aaaaaa !important;
+  opacity: 0.5 !important;
+}
+.upcoming-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52) !important;
+  color: white !important;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+  z-index: 10;
+  animation: pulse 2s infinite;
+  filter: none !important;
+  opacity: 1 !important;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.upcoming-badge:hover {
+  background: linear-gradient(135deg, #ff5252, #e53935) !important;
+  box-shadow: 0 4px 16px rgba(255, 107, 107, 0.7) !important;
+  transform: scale(1.1) !important;
+  animation: none !important;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(255, 107, 107, 0.6);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+    transform: scale(1);
+  }
+}
+
+/* Result area placeholder */
+.result-area{margin-top:1rem;background:#fafafa;padding:1rem;border-radius:8px;border:1px solid #eee}
+
+/* ---------- Footer ---------- */
+footer, .site-footer{
+  background:var(--surface);
+  text-align:center;
+  padding:1rem 0;
+  margin-top:3rem;
+  font-size:0.60rem;
+  color:var(--muted);
+  border-top:1px solid #eee;
+}
+footer a{color:var(--accent);text-decoration:none}
+
+/* ---------- Ad Container ---------- */
+.ad-container{
+  margin: 2rem auto 1rem auto;
+  max-width: var(--container-width);
+  padding: 0 1rem;
+  text-align: center;
+  min-height: 100px; /* Reserve space for ads */
+}
+
+/* ---------- Blur overlay and focus behavior ---------- */
+.blur-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.4);backdrop-filter:blur(4px);z-index:10;pointer-events:none}
+.card-grid.blur-active .service-card:not(.active){filter:blur(2px) grayscale(40%);opacity:0.6;pointer-events:none}
+.card-grid.blur-active .service-card.active{z-index:12;box-shadow:0 12px 40px rgba(0,123,215,0.22);transform:scale(1.12);border:2.5px solid rgba(2,119,200,0.12)}
+
+/* ---------- Utility helpers ---------- */
+.text-muted{color:var(--muted)}
+.small{font-size:.9rem}
+
+/* ---------- File Types Display ---------- */
+.file-types {
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--accent);
+  font-weight: 500;
+  line-height: 1.4;
+  border: 1px solid rgba(38, 105, 105, 0.1);
+  text-align: center;
+}
+
+/* ---------- Responsive rules ---------- */
+@media (max-width:900px){
+  .cherry-bomb-one-title{font-size:2rem}
+  .card-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+@media (max-width:600px){
+  header, .header, .container, main{padding:1rem}
+  .card-grid{
+    gap:1rem;
+    grid-template-columns:1fr;
+  }
+  
+  .file-types {
+    font-size: 0.8rem;
+    padding: 0.5rem;
+  }
+}
+
+/* ---------- Breadcrumb Navigation ---------- */
+.breadcrumb-nav {
+  padding: 1rem 2rem 0 2rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.breadcrumb-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 1.1rem;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+  color: var(--accent-strong);
+}
+
+.breadcrumb-separator {
+  color: var(--muted);
+  font-size: 1.1rem;
+  margin: 0 0.25rem;
+}
+
+.breadcrumb-current {
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* Breadcrumb styles within title */
+.cherry-bomb-one-title .breadcrumb-link,
+.page-title .breadcrumb-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.9em;
+  transition: background-color 0.2s ease;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+
+.cherry-bomb-one-title .breadcrumb-link:hover,
+.page-title .breadcrumb-link:hover {
+  background-color: rgba(38, 105, 105, 0.1);
+}
+
+.cherry-bomb-one-title .breadcrumb-separator,
+.page-title .breadcrumb-separator {
+  color: var(--muted);
+  font-size: 0.9em;
+  margin: 0 0.5rem;
+}
+
+/* End of stylesheet - this file intentionally supports both previous and restructured markup */

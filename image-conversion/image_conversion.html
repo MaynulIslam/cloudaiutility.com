@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Conversion - ToolzzHub.com</title>
+    <!-- Google Analytics 4 -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-0HWXJX56P9"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-0HWXJX56P9");
+    </script>
+    <link rel="stylesheet" href="../css/style.css?v=6" />
+    <meta name="google-adsense-account" content="ca-pub-5277511564882514" />
+    <link rel="stylesheet" href="css/image-conversion.css" />
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5277511564882514"
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- External Libraries for Advanced Conversion -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/browser-image-compression/2.0.2/browser-image-compression.min.js"></script>
+  </head>
+  <body>
+    <header>
+      <a href="../index.html" class="site-logo cherry-bomb-one-regular"
+        >ToolzzHub.com</a
+      >
+
+      <!-- Middle navigation with tool categories -->
+      <nav class="header-nav-middle">
+        <div class="nav-dropdown">
+          <a href="../pdf-tools.html" class="nav-link cherry-bomb-one-regular"
+            >PDF Tools</a
+          >
+          <div class="dropdown-content">
+            <a href="../pdf/merge.html">PDF Merge, Split, Compress & Edit</a>
+            <a href="../esign/request.html">eSign PDF</a>
+            <a href="../ocr/scan.html">Scan to Text</a>
+          </div>
+        </div>
+
+        <div class="nav-dropdown">
+          <a href="../image-tools.html" class="nav-link cherry-bomb-one-regular"
+            >Image Tools</a
+          >
+          <div class="dropdown-content">
+            <a href="../quick-image-edit/quick_image_edit.html"
+              >Quick Image Edit</a
+            >
+            <a href="../image/background-remover.html">Background Remover</a>
+            <a href="../image/convert.html">Change Format</a>
+          </div>
+        </div>
+
+        <div class="nav-dropdown">
+          <a
+            href="../file-conversion.html"
+            class="nav-link cherry-bomb-one-regular active"
+            >File Conversion</a
+          >
+          <div class="dropdown-content">
+            <a href="../document-conversion/document_conversion.html"
+              >Document Conversion</a
+            >
+            <a href="image_conversion.html">Image Conversion</a>
+            <a href="../audio-conversion/audio_conversion.html"
+              >Audio Conversion</a
+            >
+          </div>
+        </div>
+
+        <div class="nav-dropdown">
+          <a href="../qr-code.html" class="nav-link cherry-bomb-one-regular"
+            >QR Code Generator</a
+          >
+          <div class="dropdown-content">
+            <a href="../qr-code/basic/basic-qr.html">Basic QR Codes</a>
+            <a href="../qr-code/payment/payment-business.html"
+              >Payment & Business</a
+            >
+            <a href="../qr-code/customization/custom-qr.html"
+              >Custom QR Codes</a
+            >
+          </div>
+        </div>
+      </nav>
+
+      <!-- Right navigation with version info -->
+      <nav class="header-nav-right">
+        <span class="nav-link cherry-bomb-one-regular">Beta 3.0</span>
+      </nav>
+    </header>
+
+    <main class="image-conversion-main">
+      <div class="container">
+        <h1 class="cherry-bomb-one-title">
+          <a href="../index.html" class="breadcrumb-link">All Tools</a>
+          <span class="breadcrumb-separator">></span>
+          <a href="../file-conversion.html" class="breadcrumb-link"
+            >File Conversion</a
+          >
+          <span class="breadcrumb-separator">></span>
+          <span>Convert Image</span>
+        </h1>
+        <p class="subtitle">
+          Convert between any image format with advanced options and batch
+          processing
+        </p>
+
+        <!-- Supported Formats Info -->
+        <div class="format-info">
+          <h3>Supported Formats</h3>
+          <div class="format-categories">
+            <div class="format-category">
+              <span class="category-title">Common:</span>
+              <div class="format-badges">
+                <span class="format-badge popular">JPG</span>
+                <span class="format-badge popular">PNG</span>
+                <span class="format-badge popular">WebP</span>
+                <span class="format-badge">GIF</span>
+              </div>
+            </div>
+            <div class="format-category">
+              <span class="category-title">Advanced:</span>
+              <div class="format-badges">
+                <span class="format-badge">BMP</span>
+                <span class="format-badge">TIFF</span>
+                <span class="format-badge">ICO</span>
+                <span class="format-badge">SVG</span>
+              </div>
+            </div>
+            <div class="format-category">
+              <span class="category-title">Mobile:</span>
+              <div class="format-badges">
+                <span class="format-badge">HEIC</span>
+                <span class="format-badge">HEIF</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upload Section -->
+        <section id="upload-section" class="upload-section">
+          <div class="upload-area" id="upload-area">
+            <div class="upload-content">
+              <div class="upload-icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7,10 12,15 17,10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+              </div>
+              <h3>Upload Your Images</h3>
+              <p>Drag and drop multiple images here, or click to browse</p>
+              <p class="supported-formats">
+                Supported: JPG, PNG, WebP, GIF, BMP, TIFF, ICO, SVG, HEIC
+              </p>
+              <p class="upload-limits">
+                Max size per file: 50MB | Max files: 50 | Max total: 200MB
+              </p>
+              <button class="browse-btn" id="browse-btn">Choose Images</button>
+              <input
+                type="file"
+                id="file-input"
+                multiple
+                accept="image/*"
+                style="display: none"
+              />
+            </div>
+          </div>
+        </section>
+
+        <!-- Conversion Settings -->
+        <section
+          id="settings-section"
+          class="settings-section"
+          style="display: none"
+        >
+          <div class="settings-header">
+            <h3>Conversion Settings</h3>
+            <button class="btn-secondary" id="reset-settings">
+              Reset to Defaults
+            </button>
+          </div>
+
+          <div class="settings-grid">
+            <!-- Output Format -->
+            <div class="setting-group">
+              <label for="output-format">Output Format</label>
+              <select id="output-format" class="setting-input">
+                <option value="jpg">JPG (JPEG)</option>
+                <option value="png">PNG</option>
+                <option value="webp">WebP</option>
+                <option value="gif">GIF</option>
+                <option value="bmp">BMP</option>
+                <option value="ico">ICO</option>
+              </select>
+            </div>
+
+            <!-- Quality -->
+            <div class="setting-group">
+              <label for="quality">Quality</label>
+              <div class="slider-container">
+                <input
+                  type="range"
+                  id="quality"
+                  class="setting-slider"
+                  min="10"
+                  max="100"
+                  value="85"
+                />
+                <span class="slider-value" id="quality-value">85%</span>
+              </div>
+            </div>
+
+            <!-- Resize Options -->
+            <div class="setting-group">
+              <label for="resize-mode">Resize</label>
+              <select id="resize-mode" class="setting-input">
+                <option value="none">Keep Original Size</option>
+                <option value="percentage">Resize by Percentage</option>
+                <option value="dimensions">Custom Dimensions</option>
+                <option value="max-dimension">Max Dimension</option>
+              </select>
+            </div>
+
+            <!-- Resize Values -->
+            <div class="setting-group" id="resize-values" style="display: none">
+              <label id="resize-label">Resize Value</label>
+              <div class="resize-inputs" id="resize-inputs">
+                <!-- Dynamic content based on resize mode -->
+              </div>
+            </div>
+
+            <!-- Advanced Options -->
+            <div class="setting-group">
+              <label>Advanced Options</label>
+              <div class="checkbox-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="maintain-aspect" />
+                  <span class="checkbox-text">Maintain Aspect Ratio</span>
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" id="remove-metadata" />
+                  <span class="checkbox-text">Remove Metadata</span>
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" id="progressive-jpeg" disabled />
+                  <span class="checkbox-text">Progressive JPEG</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="conversion-actions">
+            <button class="btn-primary" id="start-conversion" disabled>
+              <span class="btn-text">Convert Images</span>
+              <span class="btn-count" id="file-count">0 files</span>
+            </button>
+            <button class="btn-secondary" id="clear-all">Clear All</button>
+          </div>
+        </section>
+
+        <!-- File List -->
+        <section
+          id="file-list-section"
+          class="file-list-section"
+          style="display: none"
+        >
+          <h3>Files to Convert <span id="total-files">0</span></h3>
+          <div class="file-list" id="file-list">
+            <!-- Dynamic file list will be populated here -->
+          </div>
+        </section>
+
+        <!-- Progress Section -->
+        <section
+          id="progress-section"
+          class="progress-section"
+          style="display: none"
+        >
+          <h3>Conversion Progress</h3>
+          <div class="overall-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" id="overall-progress"></div>
+            </div>
+            <span class="progress-text" id="progress-text">0% (0/0)</span>
+          </div>
+          <div class="current-file" id="current-file">
+            Preparing conversion...
+          </div>
+        </section>
+
+        <!-- Results Section -->
+        <section
+          id="results-section"
+          class="results-section"
+          style="display: none"
+        >
+          <div class="results-header">
+            <h3>Conversion Complete!</h3>
+            <div class="results-summary" id="results-summary">
+              <!-- Summary will be populated -->
+            </div>
+          </div>
+
+          <div class="download-actions">
+            <button class="btn-primary" id="download-all">
+              <span>📦</span> Download All as ZIP
+            </button>
+            <button class="btn-secondary" id="download-individual">
+              <span>📄</span> Download Individual Files
+            </button>
+            <button class="btn-secondary" id="start-new">
+              Start New Conversion
+            </button>
+          </div>
+
+          <div class="converted-files" id="converted-files">
+            <!-- Converted files list will be populated -->
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Ad placement container -->
+    <div class="ad-container">
+      <!-- Google AdSense auto ads will be placed here -->
+    </div>
+
+    <footer>
+      <p>
+        &copy; 2025 ToolzzHub.com. All rights reserved. Icon Credits:
+        <a
+          href="https://www.flaticon.com/free-animated-icons/pdf"
+          title="pdf animated icons"
+          >Icons created by Freepik - Flaticon</a
+        >
+      </p>
+      <div>
+        <a href="../privacy-policy.html">Privacy Policy</a> |
+        <a href="../terms-of-service.html">Terms of Service</a> |
+        <span
+          >Contact us:
+          <a href="mailto:connect@toolzzhub.com">connect@toolzzhub.com</a></span
+        >
+      </div>
+    </footer>
+
+    <script src="js/image-conversion.js"></script>
+    <script src="../js/main.js"></script>
+    <script>
+      gtag("event", "tool_open", { tool_name: "image_conversion" });
+    </script>
+  </body>
+</html>

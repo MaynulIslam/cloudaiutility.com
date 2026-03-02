@@ -1,0 +1,11 @@
+User-agent: *
+Disallow: /server/
+Disallow: /js/Untitled-1.html
+Disallow: /pdf/merge-old.html
+Disallow: /pdf/merge-new.html
+Disallow: /archive-conversion/
+
+# Allow everything else
+Allow: /
+
+Sitemap: https://toolzzhub.com/sitemap.xml

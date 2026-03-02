@@ -1,0 +1,86 @@
+Current PDF Tool Workflow Summary
+
+  Main User Journey:
+
+  1. Entry → Users access via index.html → pdf-tools.html
+  2. Selection → Choose from 3 main tools:
+    - PDF Merge/Edit/Compress
+    - eSign PDF
+    - OCR/Scan to Text
+  3. PDF Merge Tool Flow (Most comprehensive):
+    - Upload → Drag & drop or browse files (50MB limit)
+    - Preview → Visual page thumbnails with drag-to-reorder
+    - Edit → Delete pages, rearrange order
+    - Process → Apply compression (None/Standard/Strong)
+    - Download → Get merged/compressed PDF
+
+
+
+  4. Technical Architecture:
+    - Client-side processing (privacy-focused)
+    - Libraries: pdf-lib (editing), PDF.js (rendering)
+    - No server uploads for basic operations
+    - AI features require server connection
+
+  Key Strengths:
+
+  - Privacy-first approach (local processing)
+  - Visual page management
+  - Multiple compression options
+  - Clean, intuitive UI
+  - Good error handling
+
+  Current Limitations:
+
+  - 50MB file size limit
+  - Basic editing features only
+  - No batch processing
+  - Limited automation
+  - AI features still basic
+
+
+  ------------------++++++++++++++++--------------------------
+
+  
+● Current Page Editing Features
+
+  When you click "Edit this page" from the page preview, these features are available:
+
+  📝 Text Tools
+
+  - Add Text: Click anywhere to add custom text
+  - Font Options: Arial, Times, Courier, Helvetica
+  - Font Size: 8pt to 72pt
+  - Text Color: Full color picker
+
+  🗑️  Content Removal
+
+  - Wipe Text: Click and drag to white-out areas
+  - Red selection preview while dragging
+  - Creates white rectangles over content
+
+  🔢 Page Numbering
+
+  - Add Page Number: Special mode for numbering
+  - Click to place, drag to reposition
+  - Starts with "1", fully editable
+  - Uses current font settings
+
+  🔍 View Controls
+
+  - Zoom In/Out: + and - buttons
+  - Default 150% zoom
+  - Annotations scale properly
+
+  ↩️ Actions
+
+  - Undo: Revert last action (limited)
+  - Save Page: Apply all edits
+  - Cancel: Exit without saving
+
+  🖱️  Interactive Features
+
+  - Visual feedback for all tools
+  - Cursor changes based on selected tool
+  - Real-time preview of annotations
+  - Toast notifications for actions
