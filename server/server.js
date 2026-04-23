@@ -9,8 +9,21 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// Allowed origins for CORS — add your production domain here
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3001,https://toolzzhub.com,https://www.toolzzhub.com').split(',');
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (same-origin, curl, health checks)
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
 app.use(express.json());
 
 // Create temp directory if it doesn't exist
@@ -41,13 +54,21 @@ const upload = multer({
     fileSize: 50 * 1024 * 1024 // 50MB limit
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
-      cb(null, true);
-    } else {
-      cb(new Error('Only PDF files are allowed'));
+    if (file.mimetype !== 'application/pdf') {
+      return cb(new Error('Only PDF files are allowed'));
     }
+    cb(null, true);
   }
 });
+
+// Validate PDF magic bytes (%PDF- header) after file is written to disk
+async function validatePdfMagicBytes(filePath) {
+  const fd = await fs.open(filePath, 'r');
+  const buf = Buffer.alloc(5);
+  await fd.read(buf, 0, 5, 0);
+  await fd.close();
+  return buf.toString('ascii') === '%PDF-';
+}
 
 // Compression profiles
 const COMPRESSION_PROFILES = {
@@ -89,6 +110,13 @@ app.post('/api/compress-pdf', upload.single('pdf'), async (req, res) => {
 
   const { level = 'standard' } = req.body;
   const inputPath = req.file.path;
+
+  // Validate actual file contents match PDF magic bytes
+  const isValidPdf = await validatePdfMagicBytes(inputPath).catch(() => false);
+  if (!isValidPdf) {
+    await fs.unlink(inputPath).catch(() => {});
+    return res.status(400).json({ error: 'Uploaded file is not a valid PDF' });
+  }
   const outputPath = path.join(TEMP_DIR, `compressed-${uuidv4()}.pdf`);
 
   try {

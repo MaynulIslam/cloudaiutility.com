@@ -82,96 +82,101 @@
     ></script>
   </head>
   <body>
-    <header>
-      <a href="index.html" class="site-logo cherry-bomb-one-regular"
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <header role="banner">
+      <a href="index.html" class="site-logo cherry-bomb-one-regular" aria-label="ToolzzHub home"
         >ToolzzHub.com</a
       >
 
       <!-- Middle navigation with tool categories -->
-      <nav class="header-nav-middle">
-        <div class="nav-dropdown">
+      <nav class="header-nav-middle" aria-label="Main navigation">
+        <div class="nav-dropdown" role="none">
           <a href="pdf-tools.html" class="nav-link cherry-bomb-one-regular"
+            aria-haspopup="true" aria-expanded="false"
             >PDF Tools</a
           >
-          <div class="dropdown-content">
-            <a href="pdf/merge.html">PDF Merge, Split, Compress & Edit</a>
-            <a href="esign/request.html">eSign PDF</a>
-            <a href="ocr/scan.html">Scan to Text</a>
+          <div class="dropdown-content" role="menu" aria-label="PDF Tools submenu">
+            <a href="pdf/merge.html" role="menuitem">PDF Merge, Split, Compress &amp; Edit</a>
+            <a href="esign/request.html" role="menuitem">eSign PDF</a>
+            <a href="ocr/scan.html" role="menuitem">Scan to Text</a>
           </div>
         </div>
 
-        <div class="nav-dropdown">
+        <div class="nav-dropdown" role="none">
           <a href="image-tools.html" class="nav-link cherry-bomb-one-regular"
+            aria-haspopup="true" aria-expanded="false"
             >Image Tools</a
           >
-          <div class="dropdown-content">
-            <a href="quick-image-edit/quick_image_edit.html"
+          <div class="dropdown-content" role="menu" aria-label="Image Tools submenu">
+            <a href="quick-image-edit/quick_image_edit.html" role="menuitem"
               >Quick Image Edit</a
             >
-            <a href="image/background-remover.html">Background Remover</a>
-            <a href="image/convert.html">Change Format</a>
+            <a href="image/background-remover.html" role="menuitem">Background Remover</a>
+            <a href="image/convert.html" role="menuitem">Change Format</a>
           </div>
         </div>
 
-        <div class="nav-dropdown">
+        <div class="nav-dropdown" role="none">
           <a
             href="file-conversion.html"
             class="nav-link cherry-bomb-one-regular"
+            aria-haspopup="true" aria-expanded="false"
             >File Conversion</a
           >
-          <div class="dropdown-content">
-            <a href="document-conversion/document_conversion.html"
+          <div class="dropdown-content" role="menu" aria-label="File Conversion submenu">
+            <a href="document-conversion/document_conversion.html" role="menuitem"
               >Document Conversion</a
             >
-            <a href="image-conversion/image_conversion.html"
+            <a href="image-conversion/image_conversion.html" role="menuitem"
               >Image Conversion</a
             >
-            <a href="audio-conversion/audio_conversion.html"
+            <a href="audio-conversion/audio_conversion.html" role="menuitem"
               >Audio Conversion</a
             >
           </div>
         </div>
 
-        <div class="nav-dropdown">
+        <div class="nav-dropdown" role="none">
           <a href="qr-code.html" class="nav-link cherry-bomb-one-regular"
+            aria-haspopup="true" aria-expanded="false"
             >QR Code Generator</a
           >
-          <div class="dropdown-content">
-            <a href="qr-code/basic/basic-qr.html">Basic QR Codes</a>
-            <a href="qr-code/payment/payment-business.html"
-              >Payment & Business</a
+          <div class="dropdown-content" role="menu" aria-label="QR Code submenu">
+            <a href="qr-code/basic/basic-qr.html" role="menuitem">Basic QR Codes</a>
+            <a href="qr-code/payment/payment-business.html" role="menuitem"
+              >Payment &amp; Business</a
             >
-            <a href="qr-code/customization/custom-qr.html">Custom QR Codes</a>
+            <a href="qr-code/customization/custom-qr.html" role="menuitem">Custom QR Codes</a>
           </div>
         </div>
       </nav>
 
       <!-- Right navigation with version info -->
-      <nav class="header-nav-right">
-        <span class="nav-link cherry-bomb-one-regular">Beta 3.0</span>
+      <nav class="header-nav-right" aria-label="Site info">
+        <span class="nav-link cherry-bomb-one-regular" aria-label="Version Beta 3.0">Beta 3.0</span>
       </nav>
     </header>
-    <main>
+    <main id="main-content">
       <h1 class="cherry-bomb-one-title">AI Utility Tools</h1>
-      <section class="card-grid" id="services">
+      <section class="card-grid" id="services" aria-label="Available tools">
         <!-- Service Cards -->
-        <a class="service-card" href="pdf-tools.html">
-          <img src="assets/pdf_icon.gif" alt="PDF Tools" />
+        <a class="service-card" href="pdf-tools.html" aria-label="PDF Tools — Merge, split, compress, and convert PDFs">
+          <img src="assets/pdf_icon.gif" alt="" role="presentation" />
           <h2>PDF Tools</h2>
           <p>Merge, split, compress, and convert PDFs easily.</p>
         </a>
-        <a class="service-card" href="image-tools.html">
-          <img src="assets/image_icon.gif" alt="Image Tools" />
+        <a class="service-card" href="image-tools.html" aria-label="Image Tools — Resize, compress, and convert image formats">
+          <img src="assets/image_icon.gif" alt="" role="presentation" />
           <h2>Image Tools</h2>
           <p>Resize, compress, and convert image formats.</p>
         </a>
-        <a class="service-card" href="file-conversion.html">
-          <img src="assets/fileconversion_icon.gif" alt="File Conversion" />
+        <a class="service-card" href="file-conversion.html" aria-label="File Conversion — Convert video, audio, and document files">
+          <img src="assets/fileconversion_icon.gif" alt="" role="presentation" />
           <h2>File Conversion</h2>
           <p>Convert video, audio, and document files.</p>
         </a>
-        <a class="service-card" href="qr-code.html">
-          <img src="assets/qr_icon.gif" alt="QR Code Generator" />
+        <a class="service-card" href="qr-code.html" aria-label="QR Code Generator — Create customizable QR codes instantly">
+          <img src="assets/qr_icon.gif" alt="" role="presentation" />
           <h2>QR Code Generator</h2>
           <p>Create customizable QR codes instantly.</p>
         </a>
@@ -201,6 +206,12 @@
         >
       </div>
     </footer>
+    <script src="js/freemium.js"></script>
     <script src="js/main.js"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }
+    </script>
   </body>
 </html>

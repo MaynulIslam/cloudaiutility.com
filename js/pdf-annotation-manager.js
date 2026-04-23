@@ -60,7 +60,6 @@ class PDFAnnotationManager {
     this.setupLayers();
     this.setupEventHandlers();
     this.setupKeyboardShortcuts();
-    console.log('✅ PDF Annotation Manager initialized');
   }
   
   setupLayers() {
@@ -98,8 +97,6 @@ class PDFAnnotationManager {
     
     container.appendChild(this.layers.annotation);
     container.appendChild(this.layers.ui);
-    
-    console.log('✅ Annotation layers created and added to container');
   }
   
   enableInteraction() {
@@ -789,22 +786,137 @@ class PDFAnnotationManager {
     // Clear data
     this.annotations.clear();
     this.history = [];
-    
-    console.log('📤 PDF Annotation Manager destroyed');
   }
   
-  // Stub methods for incomplete event handlers
-  handleMouseDown(e) { /* TODO: Implement drag functionality */ }
-  handleMouseMove(e) { /* TODO: Implement hover effects */ }
-  handleMouseUp(e) { /* TODO: Implement drag end */ }
-  handleTouchStart(e) { /* TODO: Implement touch support */ }
-  handleTouchMove(e) { /* TODO: Implement touch support */ }
-  handleTouchEnd(e) { /* TODO: Implement touch support */ }
-  cancelCurrentOperation() { /* TODO: Implement operation cancellation */ }
-  duplicateSelected() { /* TODO: Implement duplication */ }
-  renderHighlightAnnotation(annotation) { /* TODO: Implement highlight rendering */ }
-  renderRectangleAnnotation(annotation) { /* TODO: Implement rectangle rendering */ }
-  renderStampAnnotation(annotation) { /* TODO: Implement stamp rendering */ }
+  // ====== MOUSE DRAG HANDLERS ======
+
+  handleMouseDown(e) {
+    const target = e.target.closest('[data-annotation-id]');
+    if (!target || this.activeToolType !== 'select') return;
+    const annotation = this.annotations.get(target.dataset.annotationId);
+    if (!annotation) return;
+    this.selectAnnotation(annotation.id);
+    const layerRect = this.layers.annotation.getBoundingClientRect();
+    const startPdf = this.screenToPdfCoords(e.clientX - layerRect.left, e.clientY - layerRect.top);
+    this._dragState = { annotation, startPdf, originPdf: { ...annotation.pdfCoords } };
+    e.preventDefault();
+  }
+
+  handleMouseMove(e) {
+    if (!this._dragState) {
+      const target = e.target.closest('[data-annotation-id]');
+      this.layers.annotation.style.cursor = target && this.activeToolType === 'select' ? 'move' : '';
+      return;
+    }
+    const { annotation, startPdf, originPdf } = this._dragState;
+    const layerRect = this.layers.annotation.getBoundingClientRect();
+    const curPdf = this.screenToPdfCoords(e.clientX - layerRect.left, e.clientY - layerRect.top);
+    annotation.pdfCoords = { x: originPdf.x + (curPdf.x - startPdf.x), y: originPdf.y + (curPdf.y - startPdf.y) };
+    annotation.metadata.modified = new Date().toISOString();
+    this.renderAnnotation(annotation);
+    e.preventDefault();
+  }
+
+  handleMouseUp(e) {
+    if (!this._dragState) return;
+    this.saveState();
+    this._dragState = null;
+  }
+
+  // ====== TOUCH HANDLERS ======
+
+  handleTouchStart(e) {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    this.handleMouseDown({ clientX: t.clientX, clientY: t.clientY, target: t.target, preventDefault: () => e.preventDefault() });
+  }
+
+  handleTouchMove(e) {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    this.handleMouseMove({ clientX: t.clientX, clientY: t.clientY, preventDefault: () => e.preventDefault() });
+  }
+
+  handleTouchEnd(e) { this.handleMouseUp(e); }
+
+  // ====== OPERATION CONTROL ======
+
+  cancelCurrentOperation() {
+    if (this._dragState) {
+      const { annotation, originPdf } = this._dragState;
+      annotation.pdfCoords = { ...originPdf };
+      this.renderAnnotation(annotation);
+      this._dragState = null;
+    }
+    this.layers.ui.querySelectorAll('.pdf-text-editor').forEach(el => el.remove());
+    this.isEditing = false;
+    if (this.selectedAnnotation) {
+      this.removeSelectionUI(this.selectedAnnotation);
+      this.selectedAnnotation = null;
+    }
+  }
+
+  // ====== DUPLICATION ======
+
+  duplicateSelected() {
+    if (!this.selectedAnnotation) return;
+    const src = this.selectedAnnotation;
+    this.createAnnotation(src.type, {
+      pdfCoords: { x: src.pdfCoords.x + 10, y: src.pdfCoords.y - 10 },
+      properties: { ...src.properties },
+      author: src.metadata.author
+    });
+  }
+
+  // ====== HIGHLIGHT ANNOTATION ======
+
+  renderHighlightAnnotation(annotation) {
+    if (annotation.element && annotation.element.parentNode) annotation.element.parentNode.removeChild(annotation.element);
+    const sc = this.pdfToScreenCoords(annotation.pdfCoords.x, annotation.pdfCoords.y);
+    const props = annotation.properties;
+    const w = (props.width || 100) * this.scale;
+    const h = (props.height || 20) * this.scale;
+    const el = document.createElement('div');
+    el.className = 'pdf-highlight-annotation';
+    el.style.cssText = `position:absolute;left:${sc.x}px;top:${sc.y - h}px;width:${w}px;height:${h}px;background:${props.color || 'rgba(255,255,0,0.4)'};mix-blend-mode:multiply;cursor:pointer;pointer-events:auto;border-radius:2px;`;
+    el.dataset.annotationId = annotation.id;
+    el.addEventListener('click', e => { e.stopPropagation(); this.selectAnnotation(annotation.id); });
+    annotation.element = el;
+    this.layers.annotation.appendChild(el);
+  }
+
+  // ====== RECTANGLE ANNOTATION ======
+
+  renderRectangleAnnotation(annotation) {
+    if (annotation.element && annotation.element.parentNode) annotation.element.parentNode.removeChild(annotation.element);
+    const sc = this.pdfToScreenCoords(annotation.pdfCoords.x, annotation.pdfCoords.y);
+    const props = annotation.properties;
+    const w = (props.width || 80) * this.scale;
+    const h = (props.height || 50) * this.scale;
+    const el = document.createElement('div');
+    el.className = 'pdf-rectangle-annotation';
+    el.style.cssText = `position:absolute;left:${sc.x}px;top:${sc.y - h}px;width:${w}px;height:${h}px;background:${props.backgroundColor || 'transparent'};border:${props.borderWidth || 2}px solid ${props.borderColor || '#e53935'};border-radius:2px;cursor:pointer;pointer-events:auto;`;
+    el.dataset.annotationId = annotation.id;
+    el.addEventListener('click', e => { e.stopPropagation(); this.selectAnnotation(annotation.id); });
+    annotation.element = el;
+    this.layers.annotation.appendChild(el);
+  }
+
+  // ====== STAMP ANNOTATION ======
+
+  renderStampAnnotation(annotation) {
+    if (annotation.element && annotation.element.parentNode) annotation.element.parentNode.removeChild(annotation.element);
+    const sc = this.pdfToScreenCoords(annotation.pdfCoords.x, annotation.pdfCoords.y);
+    const props = annotation.properties;
+    const el = document.createElement('div');
+    el.className = 'pdf-stamp-annotation';
+    el.style.cssText = `position:absolute;left:${sc.x}px;top:${sc.y - 32}px;padding:4px 12px;border:2px solid ${props.borderColor || '#e53935'};border-radius:4px;color:${props.color || '#e53935'};font-size:${(props.fontSize || 14) * this.scale}px;font-family:${props.fontFamily || 'Arial'};font-weight:700;text-transform:uppercase;letter-spacing:2px;cursor:pointer;pointer-events:auto;user-select:none;white-space:nowrap;opacity:0.85;`;
+    el.textContent = props.text || 'APPROVED';
+    el.dataset.annotationId = annotation.id;
+    el.addEventListener('click', e => { e.stopPropagation(); this.selectAnnotation(annotation.id); });
+    annotation.element = el;
+    this.layers.annotation.appendChild(el);
+  }
 }
 
 // Export for use in main application

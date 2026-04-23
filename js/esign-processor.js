@@ -648,23 +648,18 @@ class ESignProcessor {
     textarea.style.fontFamily = canonicalStyle.fontFamily;
     textarea.style.fontSize = canonicalStyle.fontSize + 'px';
     textarea.style.color = canonicalStyle.color;
-    console.log('[eSign] textarea created at', { page: pageNumber, x, y, canonicalStyle });
-
         // Handlers that update the canonical style and reflect it into textarea
         const onFontFamilyChange = (e) => {
             canonicalStyle.fontFamily = this.fontFamilySelect.value;
             textarea.style.fontFamily = canonicalStyle.fontFamily;
-            console.log('[eSign] font family changed (textarea)', canonicalStyle.fontFamily);
         };
         const onFontSizeChange = (e) => {
             canonicalStyle.fontSize = parseInt(this.fontSizeInput.value, 10);
             textarea.style.fontSize = canonicalStyle.fontSize + 'px';
-            console.log('[eSign] font size changed (textarea)', canonicalStyle.fontSize);
         };
         const onFontColorChange = (e) => {
             canonicalStyle.color = this.fontColorInput.value;
             textarea.style.color = canonicalStyle.color;
-            console.log('[eSign] font color changed (textarea)', canonicalStyle.color);
         };
 
         // Attach listeners to the controls to update the canonical style live.
@@ -750,8 +745,6 @@ class ESignProcessor {
             const top = parseFloat(textarea.style.top);
             const w = textarea.offsetWidth;
             const h = textarea.offsetHeight;
-
-            console.log('[eSign] Finalizing placement', { finalText, canonicalStyle });
             const field = {
                 id: Date.now(),
                 type: 'signature',
@@ -772,8 +765,6 @@ class ESignProcessor {
                 color: canonicalStyle.color,
                 fontSize: canonicalStyle.fontSize
             };
-            console.log('[DEBUG] Creating field with font:', canonicalStyle.fontFamily);
-
             this.signatureFields.push(field);
             if (textarea.parentNode) textarea.parentNode.removeChild(textarea);
             overlay.style.pointerEvents = 'none';
@@ -983,7 +974,6 @@ class ESignProcessor {
             field.fontFamily = canonicalStyle.fontFamily;
             field.fontSize = parseInt(textarea.style.fontSize, 10) || canonicalStyle.fontSize;
             field.color = canonicalStyle.color;
-            console.log('[DEBUG] Updated existing field font to:', field.fontFamily);
             field.relativeX = Math.max(0, Math.min(1, left / (cRect.width || 1)));
             field.relativeY = Math.max(0, Math.min(1, top / (cRect.height || 1)));
             field.relativeWidth = Math.min(1, w / (cRect.width || 1));
@@ -1019,7 +1009,6 @@ class ESignProcessor {
                 if (this.fontFamilySelect) this.fontFamilySelect.value = field.fontFamily || 'Arial';
                 if (this.fontSizeInput) this.fontSizeInput.value = field.fontSize || 20;
                 if (this.fontColorInput) this.fontColorInput.value = field.color || '#000000';
-                console.log('[eSign] selectField set controls to', { fontFamily: this.fontFamilySelect.value, fontSize: this.fontSizeInput.value, color: this.fontColorInput.value });
             } finally {
                 // Allow updates again after a short defer to ensure no immediate event triggers fire
                 setTimeout(() => { this.suppressStyleUpdates = false; }, 0);
@@ -1104,26 +1093,27 @@ class ESignProcessor {
 
     // Send for signature methods
     updateSendSummary() {
-        const summaryHtml = `
-            <div class="summary-item">
-                <span class="summary-label">Document:</span>
-                <span class="summary-value">${this.uploadedFile.name}</span>
-            </div>
-            <div class="summary-item">
-                <span class="summary-label">Signers:</span>
-                <span class="summary-value">${this.signers.length}</span>
-            </div>
-            <div class="summary-item">
-                <span class="summary-label">Signature Fields:</span>
-                <span class="summary-value">${this.signatureFields.length}</span>
-            </div>
-            <div class="summary-item">
-                <span class="summary-label">File Size:</span>
-                <span class="summary-value">${this.formatFileSize(this.uploadedFile.size)}</span>
-            </div>
-        `;
-        
-        this.sendSummary.innerHTML = summaryHtml;
+        const items = [
+            { label: 'Document:', value: this.uploadedFile.name },
+            { label: 'Signers:', value: String(this.signers.length) },
+            { label: 'Signature Fields:', value: String(this.signatureFields.length) },
+            { label: 'File Size:', value: this.formatFileSize(this.uploadedFile.size) }
+        ];
+
+        this.sendSummary.innerHTML = '';
+        items.forEach(({ label, value }) => {
+            const row = document.createElement('div');
+            row.className = 'summary-item';
+            const lbl = document.createElement('span');
+            lbl.className = 'summary-label';
+            lbl.textContent = label;
+            const val = document.createElement('span');
+            val.className = 'summary-value';
+            val.textContent = value;
+            row.appendChild(lbl);
+            row.appendChild(val);
+            this.sendSummary.appendChild(row);
+        });
     }
 
     sendForSignature() {
@@ -1159,7 +1149,6 @@ class ESignProcessor {
         }
 
         // Debug logging
-        console.log('Processing signatures:', this.signatureFields.length, 'fields');
         this.signatureFields.forEach((field, index) => {
             console.log(`Field ${index}:`, {
                 page: field.page,
@@ -1179,11 +1168,9 @@ class ESignProcessor {
         try {
             // Load pdf-lib dynamically and register fontkit for custom fonts
             const pdfLib = await import('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.esm.js');
-            console.log('[DEBUG] pdf-lib loaded');
             try {
                 const fontkitMod = await import('https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.es.js');
                 const fontkit = fontkitMod.default || fontkitMod;
-                console.log('[DEBUG] fontkit loaded:', typeof fontkit);
                 // Create a temporary doc to register fontkit or register on the target doc after creation
                 // We'll register on the actual document after loading below
                 var _fontkit = fontkit;
@@ -1199,11 +1186,9 @@ class ESignProcessor {
             // Clone to avoid using a transferred buffer
             const safeBytes = inputBytes.slice();
             const pdfDoc = await pdfLib.PDFDocument.load(safeBytes);
-            console.log('[DEBUG] PDF document loaded');
             if (typeof _fontkit !== 'undefined' && pdfDoc && pdfDoc.registerFontkit) {
                 try { 
                     pdfDoc.registerFontkit(_fontkit); 
-                    console.log('[DEBUG] fontkit registered successfully');
                 } catch (e) { 
                     console.warn('Failed to register fontkit', e); 
                 }
@@ -1236,19 +1221,13 @@ class ESignProcessor {
             }
 
             async function getFont(fontFamily) {
-                console.log('[DEBUG] getFont called with:', fontFamily);
                 const key = normalizeFamily(fontFamily);
-                console.log('[DEBUG] normalized to:', key);
-                
                 if (fontCache[key]) {
-                    console.log('[DEBUG] returning cached font for:', key);
                     return fontCache[key];
                 }
                 
                 // For now, map all custom fonts to Helvetica until we can get reliable font URLs
                 // This will at least preserve the text with consistent formatting
-                console.log('[DEBUG] using standard font mapping for:', key);
-                
                 // Map specific font families to PDF standard fonts
                 let standardFont = pdfLib.StandardFonts.Helvetica;
                 if (/times/i.test(key) || /serif/i.test(key)) {
@@ -1266,7 +1245,6 @@ class ESignProcessor {
                 
                 const font = await pdfDoc.embedFont(standardFont);
                 fontCache[key] = font;
-                console.log('[DEBUG] embedded standard font:', standardFont, 'for key:', key);
                 return font;
             }
 
@@ -1420,7 +1398,6 @@ class ESignProcessor {
             this.actionLogs = this.actionLogs || [];
             this.actionLogs.push(entry);
             // concise console output for developer visibility
-            console.log('[eSign log]', entry);
         } catch (e) {
             // safe noop
             console.warn('eSign logging failed', e);
@@ -1493,18 +1470,12 @@ class ESignProcessor {
         const newFontFamily = this.fontFamilySelect.value;
         const newFontSize = parseInt(this.fontSizeInput.value, 10);
         const newColor = this.fontColorInput.value;
-
-        console.log('[DEBUG] updateSelectedFieldStyle called with:', { newFontFamily, newFontSize, newColor });
-
         // Find the field in the main array and update it
         const fieldToUpdate = this.signatureFields.find(f => f.id === this.selectedField.id);
         if (fieldToUpdate) {
             fieldToUpdate.fontFamily = newFontFamily;
             fieldToUpdate.fontSize = newFontSize;
             fieldToUpdate.color = newColor;
-
-            console.log('[eSign] updateSelectedFieldStyle applied', { id: fieldToUpdate.id, fontFamily: newFontFamily, fontSize: newFontSize, color: newColor });
-
             // Update the DOM element directly for immediate feedback
             const element = document.querySelector(`.signature-text-only[data-field-id="${fieldToUpdate.id}"]`);
             if (element) {
